@@ -6,12 +6,11 @@ GO_USERBOT_GRPC_HOST=go-userbot-cache-{{.projects.userbot.label}}
 GO_USERBOT_GRPC_PORT=2000
 SOCKET_KEY_USERBOT_CACHE={{.security_keys.userbot.socket_key_userbot_cache}}
 
+# пароли (MYSQL_PASS, MYSQL_ROOT_PASSWORD, MYSQL_ROOT_PASS, RABBIT_PASS,
+# RABBITMQ_DEFAULT_PASS) передаются через docker secrets — см. compose.goyaml
 MYSQL_HOST="mysql-{{.projects.userbot.label}}"
 MYSQL_PORT={{.projects.userbot.service.mysql.port}}
 MYSQL_USER="root"
-MYSQL_PASS="{{.projects.userbot.service.mysql.root_password}}"
-MYSQL_ROOT_PASSWORD="{{.projects.userbot.service.mysql.root_password}}"
-MYSQL_ROOT_PASS="{{.projects.userbot.service.mysql.root_password}}"
 MYSQL_ROOT_USER="root"
 
 MCACHE_HOST=memcached-{{.projects.userbot.label}}
@@ -21,7 +20,5 @@ RABBIT_HOST=rabbit-{{.projects.userbot.label}}
 RABBIT_PORT=5672
 RABBIT_HTTP_PORT=15672
 RABBIT_USER=user
-RABBIT_PASS=root2
 RABBITMQ_DEFAULT_USER=user
-RABBITMQ_DEFAULT_PASS=root2
 

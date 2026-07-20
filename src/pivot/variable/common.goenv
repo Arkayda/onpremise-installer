@@ -8,15 +8,15 @@ CRM_PROTOCOL="{{.protocol}}"
 CRM_DOMAIN="crm.{{.domain}}"
 PIVOT_URL={{.protocol}}://{{.domain}}/pivot
 
+# пароли (MYSQL_PASS, MYSQL_ROOT_PASSWORD, MYSQL_SYSTEM_PASS, RABBIT_PASS,
+# RABBITMQ_DEFAULT_PASS, KAFKA_PASS) передаются через docker secrets — см. compose.goyaml
+
 MYSQL_HOST=mysql-{{.projects.pivot.label}}
 MYSQL_USER=root
-MYSQL_PASS={{.projects.pivot.service.mysql.root_password}}
-MYSQL_ROOT_PASSWORD={{.projects.pivot.service.mysql.root_password}}
 MYSQL_PORT={{.projects.pivot.service.mysql.port}}
 
 MYSQL_SYSTEM_HOST=mysql-{{.projects.pivot.label}}
 MYSQL_SYSTEM_USER=root
-MYSQL_SYSTEM_PASS={{.projects.pivot.service.mysql.root_password}}
 MYSQL_SYSTEM_PORT={{.projects.pivot.service.mysql.port}}
 
 MCACHE_HOST=memcached-{{.projects.pivot.label}}
@@ -26,9 +26,12 @@ RABBIT_HOST=rabbit-{{.projects.pivot.label}}
 RABBIT_PORT=5672
 RABBIT_HTTP_PORT=15672
 RABBIT_USER=user
-RABBIT_PASS=root2
 RABBITMQ_DEFAULT_USER=user
-RABBITMQ_DEFAULT_PASS=root2
+
+KAFKA_HOST={{.projects.kafka.host}}
+KAFKA_PORT={{.projects.kafka.service.kafka.external_port}}
+KAFKA_USER={{.projects.kafka.service.kafka.super_user}}
+KAFKA_NEED_SSL=true
 
 PHP_PIVOT_PORT=9001
 PHP_PIVOT_HTTP_PORT=8001

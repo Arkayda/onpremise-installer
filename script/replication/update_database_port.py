@@ -89,7 +89,7 @@ go_database_controller_port = domino["go_database_controller_port"]
 mysql_command = "UPDATE pivot_company_service.domino_registry SET `extra` = JSON_SET(extra, '$.extra.go_database_controller_port', %s);" % go_database_controller_port
 cmd = "mysql -h %s -u %s -p%s -e \"%s\"" % (mysql_host, mysql_user, mysql_pass, mysql_command)
 
-output = found_container.exec_run(cmd)
+output = found_container.exec_run(scriptutils.with_secret_env(cmd))
 if output.exit_code == 0:
     loader.success()
 else:

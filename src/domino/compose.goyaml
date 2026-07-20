@@ -3,7 +3,45 @@ version: '3.8'
 # файл композиции для domino-части
   {{$domino := index .projects.domino .domino_id}}
 
+# entrypoint для сервисов, получающих пароли через docker secrets
+# (шелл-шим читает /run/secrets/<ИМЯ_ПЕРЕМЕННОЙ> и экспортирует в окружение)
+x-secret-shim-entrypoint: &secret-shim-entrypoint
+  entrypoint: ["/bin/sh", "/compass_secret_shim.sh"]
+
+# набор секретов приложений domino: mysql + rabbit
+x-secrets-app: &secrets-app
+  - source: mysql-root-password
+    target: MYSQL_PASS
+  - source: mysql-root-password
+    target: MYSQL_ROOT_PASSWORD
+  - source: mysql-root-password
+    target: MYSQL_SYSTEM_PASS
+  - source: rabbit-password
+    target: RABBIT_PASS
+  - source: rabbit-password
+    target: RABBITMQ_DEFAULT_PASS
+
+# пароли передаются через docker secrets, имена версионированы md5-ревизией
+secrets:
+  mysql-root-password:
+    name: "{{.stack_name}}_mysql_root_password-{{.secret_revisions.secret.project.mysql_root_password}}"
+    file: ".secret.project.mysql_root_password"
+  rabbit-password:
+    name: "{{.stack_name}}_rabbit_password-{{.secret_revisions.secret.global.rabbit_password}}"
+    file: ".secret.global.rabbit_password"
+  backup-user-password:
+    name: "{{.stack_name}}_backup_user_password-{{.secret_revisions.secret.global.backup_user_password}}"
+    file: ".secret.global.backup_user_password"
+  backup-archive-password:
+    name: "{{.stack_name}}_backup_archive_password-{{.secret_revisions.secret.global.backup_archive_password}}"
+    file: ".secret.global.backup_archive_password"
+
 configs:
+
+  # шим доставки docker secrets в окружение приложений
+  secret-shim:
+    name: "{{.stack_name}}_secret_shim-{{.config_revisions.global.compass_secret_shim.sh}}"
+    file: ".global.compass_secret_shim.sh"
 
   # настройки коллектор-агента
   go-collector-agent-sharding-conf:
@@ -73,7 +111,10 @@ services:
     networks:
       - "domino-private"
     environment:
-      MYSQL_ROOT_PASSWORD: "{{$domino.service.mysql.root_password}}"
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/MYSQL_ROOT_PASSWORD
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
     ports:
       - "{{$domino.service.mysql.external_port}}:{{$domino.service.mysql.port}}"
     deploy:
@@ -81,7 +122,7 @@ services:
         condition: "any"
         window: "10s"
     healthcheck:
-      test: "mysqladmin ping -h localhost -P 3306 -u root --password={{$domino.service.mysql.root_password}}"
+      test: 'mysqladmin ping -h localhost -P 3306 -u root --password="$(cat /run/secrets/MYSQL_ROOT_PASSWORD)"'
       interval: "5s"
       timeout: "10s"
       retries: 3
@@ -98,11 +139,19 @@ services:
       - "domino-private"
     env_file:
       - ".project.common.env"
+    command: ["/app/entrypoint.sh"]
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
+    secrets:
+      - source: rabbit-password
+        target: RABBITMQ_DEFAULT_PASS
     deploy:
       replicas: 1
       restart_policy:
         condition: "any"
         window: "10s"
+    <<: *secret-shim-entrypoint
     logging:
       driver: "json-file"
       options:
@@ -143,6 +192,10 @@ services:
       - ".global.common.env"
       - ".project.common.env"
       - ".project.php_world.env"
+    # оригинальный ENTRYPOINT php-образа переносится в command
+    command: ["bash", "/app/entrypoint.sh"]
+    <<: *secret-shim-entrypoint
+    secrets: *secrets-app
     networks:
       - "domino-private"
     volumes:
@@ -166,6 +219,8 @@ services:
       timeout: "25s"
       retries: 10
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "tariff-conf"
         target: "/app/src/Compass/Conversation/api/conf/tariff.php"
       - source: "tariff-thread-conf"
@@ -191,6 +246,10 @@ services:
       - ".global.common.env"
       - ".project.common.env"
       - ".project.php_company.env"
+    # оригинальный ENTRYPOINT php-образа переносится в command
+    command: ["bash", "/app/entrypoint.sh"]
+    <<: *secret-shim-entrypoint
+    secrets: *secrets-app
     networks:
       - "domino-private"
     volumes:
@@ -214,6 +273,8 @@ services:
       timeout: "25s"
       retries: 10
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "smartapps"
         target: "/app/src/Compass/Company/api/conf/smartapps.php"
     logging:
@@ -228,6 +289,13 @@ services:
     env_file:
       - ".global.common.env"
       - ".project.common.env"
+    # оригинальный ENTRYPOINT php-образа переносится в command
+    command: ["bash", "/app/entrypoint.sh"]
+    <<: *secret-shim-entrypoint
+    secrets: *secrets-app
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     environment:
       MYSQL_DOMINO_HOST: "{{$domino.mysql_host}}"
       GO_DATABASE_CONTROLLER_HOST: "{{$domino.mysql_host}}"
@@ -260,6 +328,13 @@ services:
     env_file:
       - ".global.common.env"
       - ".project.common.env"
+    # оригинальный ENTRYPOINT php-образа переносится в command
+    command: ["bash", "/app/entrypoint.sh"]
+    <<: *secret-shim-entrypoint
+    secrets: *secrets-app
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     environment:
       SOCKET_KEY_MIGRATION: "{{.projects.pivot.php_migration_socket_key}}"
       MYSQL_DOMINO_HOST: "{{$domino.mysql_host}}"
@@ -296,6 +371,8 @@ services:
       - "rabbit-{{$domino.label}}"
       - "mysql-{{$domino.label}}"
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "janus"
         target: "/app/src/Compass/Speaker/api/conf/janus.php"
       - source: "stun-server-list"
@@ -306,6 +383,10 @@ services:
       - ".global.common.env"
       - ".project.common.env"
       - ".project.php_speaker.env"
+    # оригинальный ENTRYPOINT php-образа переносится в command
+    command: ["bash", "/app/entrypoint.sh"]
+    <<: *secret-shim-entrypoint
+    secrets: *secrets-app
     environment:
       JANUS_CLIENT_OPTIMAL_BANDWIDTH_MB: 6
       JANUS_ROOM_BITRATE_LIST: |
@@ -349,12 +430,18 @@ services:
       - "go-company-cache-{{$domino.label}}"
       - "go-sender-{{$domino.label}}"
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "file-nodes"
         target: "/app/src/Compass/FileBalancer/api/conf/node.php"
     env_file:
       - ".global.common.env"
       - ".project.common.env"
       - ".project.php_file_balancer.env"
+    # оригинальный ENTRYPOINT php-образа переносится в command
+    command: ["bash", "/app/entrypoint.sh"]
+    <<: *secret-shim-entrypoint
+    secrets: *secrets-app
     networks:
       - "domino-private"
     volumes:
@@ -398,6 +485,11 @@ services:
       - ".global.common.env"
       - ".project.common.env"
       - ".project.go_company_cache.env"
+    <<: *secret-shim-entrypoint
+    secrets: *secrets-app
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "domino-private"
     volumes:
@@ -439,6 +531,11 @@ services:
     env_file:
       - ".global.common.env"
       - ".project.common.env"
+    <<: *secret-shim-entrypoint
+    secrets: *secrets-app
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "domino-private"
     volumes:
@@ -483,6 +580,11 @@ services:
     env_file:
       - ".global.common.env"
       - ".project.common.env"
+    <<: *secret-shim-entrypoint
+    secrets: *secrets-app
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "domino-private"
     volumes:
@@ -523,14 +625,18 @@ services:
       - ".global.common.env"
       - ".global.go_collector_request_balancing.env"
       - ".project.common.env"
+    <<: *secret-shim-entrypoint
+    secrets: *secrets-app
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
+      - source: "go-collector-agent-sharding-conf"
+        target: "/app/api/conf/sharding.example.json"
     networks:
       - "domino-private"
     volumes:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
       - "{{$domino.company_config_dir}}/:/config"
-    configs:
-      - source: "go-collector-agent-sharding-conf"
-        target: "/app/api/conf/sharding.example.json"
     deploy:
       replicas: 1
       restart_policy:
@@ -569,6 +675,11 @@ services:
     env_file:
       - ".global.common.env"
       - ".project.common.env"
+    <<: *secret-shim-entrypoint
+    secrets: *secrets-app
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "domino-private"
     volumes:
@@ -617,6 +728,11 @@ services:
       - ".global.common.env"
       - ".project.common.env"
       - ".project.event.env"
+    <<: *secret-shim-entrypoint
+    secrets: *secrets-app
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "domino-private"
     volumes:
@@ -661,8 +777,6 @@ services:
       DOMINO_TIER: {{$domino.tier}}
       STACK_NAME_PREFIX: "{{.stack_name_prefix}}"
       BACKUP_USER: {{.backup_user}}
-      BACKUP_USER_PASSWORD: {{.backup_user_password}}
-      BACKUP_ARCHIVE_PASSWORD: {{.backup_archive_password}}
       BACKUP_SSH_KEY_FILE_PATH: {{$domino.service}}
       DOMINO_MYSQL_INNODB_FLUSH_METHOD: {{.domino_mysql_innodb_flush_method}}
       DOMINO_MYSQL_INNODB_FLUSH_LOG_AT_TIMEOUT: {{.domino_mysql_innodb_flush_log_at_timeout}}
@@ -670,6 +784,25 @@ services:
       - ".global.common.env"
       - ".project.common.env"
       - ".project.php_pivot.env"
+    <<: *secret-shim-entrypoint
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_PASS
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
+      - source: mysql-root-password
+        target: MYSQL_SYSTEM_PASS
+      - source: rabbit-password
+        target: RABBIT_PASS
+      - source: rabbit-password
+        target: RABBITMQ_DEFAULT_PASS
+      - source: backup-user-password
+        target: BACKUP_USER_PASSWORD
+      - source: backup-archive-password
+        target: BACKUP_ARCHIVE_PASSWORD
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     ports:
       - "{{$domino.go_database_controller_port}}:{{$domino.go_database_controller_port}}"
     networks:

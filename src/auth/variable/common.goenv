@@ -1,9 +1,8 @@
 GO_AUTH_GRPC_PORT=2000
 
+# пароли (MYSQL_PASS, MYSQL_ROOT_PASSWORD) передаются через docker secrets — см. compose.goyaml
 MYSQL_HOST="mysql-{{.projects.auth.label}}"
 MYSQL_USER="root"
-MYSQL_PASS="{{.projects.auth.service.mysql.root_password}}"
-MYSQL_ROOT_PASSWORD="{{.projects.auth.service.mysql.root_password}}"
 MYSQL_PORT={{.projects.auth.service.mysql.port}}
 
 AUTH_SECRET_KEY_B64={{.projects.auth.auth_secret_key}}

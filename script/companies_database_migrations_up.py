@@ -169,7 +169,7 @@ timeout = 180
 n = 0
 while n <= timeout:
     output = found_container.exec_run(user='www-data',
-                                      cmd=['bash', '-c', 'php /app/src/Compass/Migration/sh/php/migrate_up.php --y'])
+                                      cmd=['bash', '-c', ". /tmp/compass_secret_env 2>/dev/null; " + 'php /app/src/Compass/Migration/sh/php/migrate_up.php --y'])
 
     if output.exit_code == 0:
         loader.success()

@@ -44,6 +44,22 @@ x-healthcheck-go-2000: &healthcheck-go-2000
     timeout: "25s"
     retries: 10
 
+# entrypoint для сервисов, получающих пароли через docker secrets
+x-secret-shim-entrypoint: &secret-shim-entrypoint
+  entrypoint: ["/bin/sh", "/compass_secret_shim.sh"]
+
+# пароли передаются через docker secrets, имена версионированы md5-ревизией
+secrets:
+  mysql-root-password:
+    name: "{{.stack_name}}_mysql_root_password-{{.secret_revisions.secret.project.mysql_root_password}}"
+    file: ".secret.project.mysql_root_password"
+  mysql-system-password:
+    name: "{{.stack_name}}_mysql_system_password-{{.secret_revisions.secret.project.mysql_system_password}}"
+    file: ".secret.project.mysql_system_password"
+  rabbit-password:
+    name: "{{.stack_name}}_rabbit_password-{{.secret_revisions.secret.global.rabbit_password}}"
+    file: ".secret.global.rabbit_password"
+
 # --- DEFINES ---
 # единая сеть монолита
 networks:
@@ -54,6 +70,11 @@ networks:
 
 # --- DEPLOY ---
 configs:
+
+  # шим доставки docker secrets в окружение приложений
+  secret-shim:
+    name: "{{.stack_name}}_secret_shim-{{.config_revisions.global.compass_secret_shim.sh}}"
+    file: ".global.compass_secret_shim.sh"
 
   # конфигурация веб-сервера
   nginx-conf:
@@ -113,6 +134,8 @@ services:
       - ".global.common.env"
       - ".project.common.env"
       - ".project.integration_override.env"
+    # оригинальный ENTRYPOINT php-образа переносится в command
+    command: ["bash", "/app/entrypoint.sh"]
     environment:
       GO_EVENT_GLOBAL_EVENT_QUEUE: {{.projects.monolith.service.go_event.rabbit_queue}}
       GO_EVENT_SERVICE_EVENT_EXCHANGE: {{.projects.monolith.service.go_event.rabbit_service_exchange}}
@@ -121,9 +144,24 @@ services:
     volumes:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
       - *healthcheck-php-9000
+    # пароль своей бд + пароль системной бд монолита + rabbit
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_PASS
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
+      - source: mysql-system-password
+        target: MYSQL_SYSTEM_PASS
+      - source: rabbit-password
+        target: RABBIT_PASS
+      - source: rabbit-password
+        target: RABBITMQ_DEFAULT_PASS
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "integration-restrictions"
         target: "/app/src/Compass/Integration/api/conf/restrictions.php"

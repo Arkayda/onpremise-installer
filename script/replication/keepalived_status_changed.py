@@ -608,7 +608,7 @@ def disable_read_mode_db_list(db_list: list[DbConfig]):
         mysql_command = "SET GLOBAL super_read_only = OFF; SET GLOBAL read_only = OFF; UNLOCK TABLES;"
 
         cmd = "mysql -h %s -u %s -p%s -e \"%s\"" % ("localhost", db.root_user, db.root_password, mysql_command)
-        result = space_container.exec_run(cmd=cmd)
+        result = space_container.exec_run(cmd=scriptutils.with_secret_env(cmd))
 
         if result.exit_code != 0:
             print(result.output)
@@ -636,7 +636,7 @@ def stop_replication_db_list(db_list: list[DbConfig], db_type: str = ""):
                 mysql_command = "STOP SLAVE;"
 
                 cmd = "mysql -h %s -u %s -p%s -e \"%s\"" % ("localhost", db.root_user, db.root_password, mysql_command)
-                result = space_container.exec_run(cmd=cmd)
+                result = space_container.exec_run(cmd=scriptutils.with_secret_env(cmd))
 
                 if result.exit_code != 0:
                     print(result.output)
@@ -695,7 +695,7 @@ def lock_write_db_list(db_list: list[DbConfig], db_type: str = ""):
                 mysql_command = "SET GLOBAL read_only = ON; SET GLOBAL super_read_only = ON; FLUSH TABLES WITH READ LOCK;"
 
                 cmd = "mysql -h %s -u %s -p%s -e \"%s\"" % ("localhost", db.root_user, db.root_password, mysql_command)
-                result = space_container.exec_run(cmd=cmd)
+                result = space_container.exec_run(cmd=scriptutils.with_secret_env(cmd))
 
                 if result.exit_code != 0:
                     print(result.output)

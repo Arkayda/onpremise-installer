@@ -4,7 +4,7 @@ import sys
 
 sys.dont_write_bytecode = True
 
-import os, argparse, json, shutil, signal, atexit, yaml
+import os, re, argparse, json, shutil, signal, atexit, yaml
 from pathlib import Path
 from utils import scriptutils
 from subprocess import Popen
@@ -189,6 +189,64 @@ def process_conf_files(config_files: list, project: str = ""):
         temporary_file_list.append(tmp_path + "/" + conf_file_name)
 
 
+# обработать файлы секретов (значения передаются в контейнеры через docker secrets)
+def process_secret_files(secret_files: list, project: str = ""):
+    # формируем id проекта и путь до файлов
+    project_id = ".global" if project == "" else ".project"
+
+    # пробегаемся по всему списку файлов
+    for raw_gosecret_file_name in secret_files:
+        # имя файла из полученного списка
+        gosecret_file_name = Path(raw_gosecret_file_name).name
+
+        # пытаемся получить дополнительный префикс для файла, если такой найдется
+        gosecret_file_path_elements = (
+            Path(raw_gosecret_file_name).absolute().as_posix().rsplit("/", 2)
+        )
+        prefix = (
+            (gosecret_file_path_elements[1] + ".")
+            if gosecret_file_path_elements[1] != "variable"
+            else ""
+        )
+
+        # формируем итоговое имя файла (кладем плоско в tmp/ — очистка tmp/ не умеет каталоги)
+        secret_file_name = (
+                ".secret" + project_id + "." + prefix + str(gosecret_file_name).replace(".gosecret", "")
+        )
+        final_path = tmp_path + "/" + secret_file_name
+
+        # передаем файл в шаблонизатор (без конвертации deploy_prepare_env —
+        # содержимое секрета не является dotenv-файлом)
+        Popen(
+            [
+                sys.executable,
+                script_dir + "/template.py",
+                raw_gosecret_file_name,
+                values_file_name
+                + " "
+                + specified_values_file_name
+                + " "
+                + mount_security_file_name,
+                final_path,
+                override_data_to_string(override_data),
+            ]
+        ).wait()
+
+        # docker secret содержит ровно байты файла — срезаем переносы строк по краям
+        with open(final_path, "rb") as secret_file:
+            secret_value = secret_file.read().strip(b"\r\n")
+        with open(final_path, "wb") as secret_file:
+            secret_file.write(secret_value)
+        os.chmod(final_path, 0o600)
+
+        # снимаем short-хэш с файла для версионирования имени секрета в compose
+        revision = file_md5(final_path)
+        override_data["secret_revisions" + secret_file_name] = revision[0:7]
+
+        # добавляем файл в список на удаление
+        temporary_file_list.append(final_path)
+
+
 # функция высчитывания md5 хеша файла
 def file_md5(fname):
     hash_md5 = hashlib.md5()
@@ -360,8 +418,8 @@ process_goenv_files(global_goenv_files)
 
 # формирует проектные env файлы
 # project_goenv_files = Path(root_path + '/src/' + project + '/variable/').glob('**/*.goenv')
-project_goenv_files = glob.glob(root_path + "/src/" + project + "/variable/**/*.go*")
-project_goenv_files.extend(glob.glob(root_path + "/src/" + project + "/variable/*.go*"))
+project_goenv_files = glob.glob(root_path + "/src/" + project + "/variable/**/*.goenv")
+project_goenv_files.extend(glob.glob(root_path + "/src/" + project + "/variable/*.goenv"))
 process_goenv_files(project_goenv_files, project)
 
 # формируем глобальные файлы конфигурации
@@ -373,6 +431,30 @@ process_conf_files(config_files)
 config_files = glob.glob(root_path + "/src/" + project + "/config/**/*.go*")
 config_files.extend(glob.glob(root_path + "/src/" + project + "/config/*.go*"))
 process_conf_files(config_files, project)
+
+# формируем глобальные файлы секретов
+global_gosecret_files = Path(root_path + "/src/_global/variable/").glob("*.gosecret")
+process_secret_files(global_gosecret_files)
+
+# формируем проектные файлы секретов
+project_gosecret_files = glob.glob(root_path + "/src/" + project + "/variable/**/*.gosecret")
+project_gosecret_files.extend(glob.glob(root_path + "/src/" + project + "/variable/*.gosecret"))
+process_secret_files(project_gosecret_files, project)
+
+# проверяем, что в env файлах не осталось паролей — они должны передаваться
+# через docker secrets, а не через окружение контейнера
+for temporary_file_path in temporary_file_list:
+    if not temporary_file_path.endswith(".env"):
+        continue
+    with open(temporary_file_path, "r") as temporary_env_file:
+        for env_line in temporary_env_file:
+            if re.match(r"^[A-Z0-9_]*(PASS|PASSWORD)=", env_line.strip()):
+                print(
+                    scriptutils.warning(
+                        "Внимание: пароль %s передается через env (%s) — должен идти через docker secrets"
+                        % (env_line.split("=")[0], Path(temporary_file_path).name)
+                    )
+                )
 
 print(override_data)
 compose_file_name = ".compose.goyaml"

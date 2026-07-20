@@ -285,7 +285,7 @@ def mysql_start_replication(current_values: Dict, found_container: docker.models
     cmd = "mysql -h %s -u %s -p%s -e \"%s\"" % (mysql_host, mysql_user, mysql_pass, mysql_command)
 
     try:
-        result = found_container.exec_run(cmd)
+        result = found_container.exec_run(scriptutils.with_secret_env(cmd))
     except docker.errors.NotFound:
         print("\nНе нашли mysql контейнер для компании")
         return
@@ -345,7 +345,7 @@ def mysql_start_replication(current_values: Dict, found_container: docker.models
     cmd = "mysql -h %s -u %s -p%s -e \"%s\"" % (mysql_host, mysql_user, mysql_pass, mysql_command)
 
     try:
-        result = found_container.exec_run(cmd)
+        result = found_container.exec_run(scriptutils.with_secret_env(cmd))
     except docker.errors.NotFound:
         print("\nКонтейнер %s не найден - пропускам" % found_container.id)
         return
@@ -365,7 +365,7 @@ def wait_master_mysql_replication(found_container: docker.models.containers.Cont
     # получаем статус репликации
     cmd = f"mysql -h {mysql_host} -u {mysql_user} -p{mysql_pass} -e \"SHOW SLAVE STATUS\\G\""
     try:
-        result = found_container.exec_run(cmd)
+        result = found_container.exec_run(scriptutils.with_secret_env(cmd))
     except docker.errors.NotFound:
         scriptutils.die("\nОшибка при попытке получить статус запущенной репликации")
 

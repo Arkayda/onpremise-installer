@@ -2,7 +2,36 @@ version: '3.8'
 
 # файл композиции для jitsi
 
+# entrypoint для сервисов, получающих секреты через docker secrets
+x-secret-shim-entrypoint: &secret-shim-entrypoint
+  entrypoint: ["/bin/sh", "/compass_secret_shim.sh"]
+
+x-secrets-jitsi: &secrets-jitsi
+  - source: jitsi-jwt-app-secret
+    target: JWT_APP_SECRET
+  - source: jitsi-jicofo-auth-password
+    target: JICOFO_AUTH_PASSWORD
+  - source: jitsi-jvb-auth-password
+    target: JVB_AUTH_PASSWORD
+
+# секреты передаются через docker secrets, имена версионированы md5-ревизией
+secrets:
+  jitsi-jwt-app-secret:
+    name: "{{.stack_name}}_jitsi_jwt_app_secret-{{.secret_revisions.secret.project.jwt_app_secret}}"
+    file: ".secret.project.jwt_app_secret"
+  jitsi-jicofo-auth-password:
+    name: "{{.stack_name}}_jitsi_jicofo_auth_password-{{.secret_revisions.secret.project.jicofo_auth_password}}"
+    file: ".secret.project.jicofo_auth_password"
+  jitsi-jvb-auth-password:
+    name: "{{.stack_name}}_jitsi_jvb_auth_password-{{.secret_revisions.secret.project.jvb_auth_password}}"
+    file: ".secret.project.jvb_auth_password"
+
 configs:
+
+  # шим доставки docker secrets в окружение приложений
+  secret-shim:
+    name: "{{.stack_name}}_secret_shim-{{.config_revisions.global.compass_secret_shim.sh}}"
+    file: ".global.compass_secret_shim.sh"
 
   # конфиг плагина отправки событий с jitsi ноды на backend
   prosody-eplugin-cfg:
@@ -48,7 +77,13 @@ services:
       - '{{.projects.jitsi.service.web.https_port}}:443'
     env_file:
       - ".project.common.env"
+    <<: *secret-shim-entrypoint
+    # оригинальный ENTRYPOINT образа (s6 /init) переносится в command
+    command: ["/init"]
+    secrets: *secrets-jitsi
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "web-config-js"
         target: "/config/config.js"
       - source: "web-interface-config-js"
@@ -75,6 +110,13 @@ services:
         protocol: "udp"
     env_file:
       - ".project.common.env"
+    <<: *secret-shim-entrypoint
+    # оригинальный ENTRYPOINT образа (s6 /init) переносится в command
+    command: ["/init"]
+    secrets: *secrets-jitsi
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     depends_on:
       - prosody-{{.projects.jitsi.label}}
     networks:
@@ -90,7 +132,12 @@ services:
       - '5280'
     ports:
       - '{{.projects.jitsi.service.prosody.serve_port}}:5280'
+    <<: *secret-shim-entrypoint
+    command: ["/entrypoint.sh"]
+    secrets: *secrets-jitsi
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "prosody-eplugin-cfg"
         target: "/config/conf.d/esync.jitsi-meet.cfg.lua"
       - source: "prosody-rest-api-plugin-cfg"
@@ -116,6 +163,12 @@ services:
       - '{{.projects.jitsi.service.jicofo.port}}:8888'
     env_file:
       - ".project.common.env"
+    <<: *secret-shim-entrypoint
+    command: ["/entrypoint.sh"]
+    secrets: *secrets-jitsi
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     depends_on:
       - prosody-{{.projects.jitsi.label}}
     networks:

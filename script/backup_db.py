@@ -312,7 +312,7 @@ def backup_db_list(db_list: list[DbConfig], backup_path_str: str):
                 lock_sql = "SELECT GET_LOCK('backup_lock', 600); SELECT SLEEP(3600);"
                 cmd = f"mysql -h localhost -u {db.root_user} -p{db.root_password} -N -e \"{lock_sql}\""
                 # detach=True позволяет процессу жить в фоне и держать сессию (и лок)
-                db_container.exec_run(cmd=cmd, detach=True)
+                db_container.exec_run(cmd=scriptutils.with_secret_env(cmd), detach=True)
                 print(scriptutils.success(f"Блокировка (container {db_container.name}) установлена."))
 
             if db.driver == "host":
@@ -415,7 +415,7 @@ def prepare_db(db: DbConfig) -> docker.models.containers.Container | None:
                     "FLUSH PRIVILEGES;"
 
     cmd = "mysql -h %s -u %s -p%s -e \"%s\"" % ("localhost", db.root_user, db.root_password, mysql_command)
-    result = space_container.exec_run(cmd=cmd)
+    result = space_container.exec_run(cmd=scriptutils.with_secret_env(cmd))
 
     if result.exit_code != 0:
         print(result.output)

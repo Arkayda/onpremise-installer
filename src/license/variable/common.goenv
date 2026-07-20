@@ -1,7 +1,6 @@
+# пароли (MYSQL_PASS, MYSQL_ROOT_PASSWORD) передаются через docker secrets — см. compose.goyaml
 MYSQL_HOST=mysql-{{.projects.pivot.label}}
 MYSQL_USER=root
-MYSQL_PASS={{.projects.pivot.service.mysql.root_password}}
-MYSQL_ROOT_PASSWORD={{.projects.pivot.service.mysql.root_password}}
 MYSQL_PORT={{.projects.pivot.service.mysql.port}}
 
 SOCKET_KEY_LICENSE_MANAGER="{{.security_keys.license.socket_key_license_manager}}"

@@ -93,6 +93,7 @@ output = found_php_file_node_container.exec_run(
     cmd=[
         "bash",
         "-c",
+        ". /tmp/compass_secret_env 2>/dev/null; " + 
         "php /app/src/Compass/FileNode/sh/php/file/delete_expired_files.php --force",
     ],
 )

@@ -38,8 +38,50 @@ x-log-rule-default: &log-rule-default
       max-size: "15m"
       max-file: "3"
 
+# entrypoint для сервисов, получающих пароли через docker secrets
+# (шелл-шим читает /run/secrets/<ИМЯ_ПЕРЕМЕННОЙ> и экспортирует в окружение)
+x-secret-shim-entrypoint: &secret-shim-entrypoint
+  entrypoint: ["/bin/sh", "/compass_secret_shim.sh"]
+
+# секреты jitsi: базовый набор (общий env) и набор prosody-visitors
+x-secrets-jitsi-common: &secrets-jitsi-common
+  - source: jitsi-jwt-app-secret
+    target: JWT_APP_SECRET
+  - source: jitsi-jicofo-auth-password
+    target: JICOFO_AUTH_PASSWORD
+  - source: jitsi-jvb-auth-password
+    target: JVB_AUTH_PASSWORD
+
+x-secrets-jitsi-visitors: &secrets-jitsi-visitors
+  - source: jitsi-jwt-app-secret
+    target: JWT_APP_SECRET
+  - source: jitsi-jicofo-auth-password
+    target: JICOFO_AUTH_PASSWORD
+  - source: jitsi-jvb-auth-password
+    target: JVB_AUTH_PASSWORD
+  - source: jitsi-jwt-app-secret
+    target: COMPASS_APP_SECRET
+  - source: jitsi-turn-credentials
+    target: TURN_CREDENTIALS
+
 volumes:
   jitsi-custom-web-{{.projects.jitsi.tag}}:
+
+# секреты jitsi (создаются из рендера .secret.project.jitsi.*,
+# config secret-shim определен в базовом compose-файле стека)
+secrets:
+  jitsi-jwt-app-secret:
+    name: "{{.stack_name}}_jitsi_jwt_app_secret-{{.secret_revisions.secret.project.jitsi.jwt_app_secret}}"
+    file: ".secret.project.jitsi.jwt_app_secret"
+  jitsi-jicofo-auth-password:
+    name: "{{.stack_name}}_jitsi_jicofo_auth_password-{{.secret_revisions.secret.project.jitsi.jicofo_auth_password}}"
+    file: ".secret.project.jitsi.jicofo_auth_password"
+  jitsi-jvb-auth-password:
+    name: "{{.stack_name}}_jitsi_jvb_auth_password-{{.secret_revisions.secret.project.jitsi.jvb_auth_password}}"
+    file: ".secret.project.jitsi.jvb_auth_password"
+  jitsi-turn-credentials:
+    name: "{{.stack_name}}_jitsi_turn_credentials-{{.secret_revisions.secret.project.jitsi.turn_credentials}}"
+    file: ".secret.project.jitsi.turn_credentials"
 
 services:
 
@@ -81,7 +123,12 @@ services:
       - '{{.projects.jitsi.service.web.https_port}}:443'
     env_file:
       - ".project.jitsi.common.env"
+    <<: *secret-shim-entrypoint
+    command: ["/entrypoint.sh"]
+    secrets: *secrets-jitsi-common
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "web-config-js"
         target: "/config/config.js"
       - source: "web-interface-config-js"
@@ -140,6 +187,12 @@ services:
         protocol: "udp"
     env_file:
       - ".project.jitsi.common.env"
+    <<: *secret-shim-entrypoint
+    command: ["/init"]
+    secrets: *secrets-jitsi-common
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     depends_on:
       - prosody-{{.projects.jitsi.label}}
       - prosody-{{.projects.jitsi.label}}-v0
@@ -182,6 +235,8 @@ services:
     ports:
       - '{{.projects.jitsi.service.prosody.serve_port}}:5280'
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "prosody-main-cfg"
         target: "/config/conf.d/jitsi-meet.cfg.lua"
       - source: "prosody-eplugin-cfg"
@@ -195,6 +250,9 @@ services:
     env_file:
       - ".project.jitsi.common.env"
       - ".project.jitsi.prosody_main.env"
+    <<: *secret-shim-entrypoint
+    command: ["/entrypoint.sh"]
+    secrets: *secrets-jitsi-common
     depends_on:
       - prosody-{{.projects.jitsi.label}}-v0
       - prosody-{{.projects.jitsi.label}}-v1
@@ -239,11 +297,16 @@ services:
     ports:
       - '{{.projects.jitsi.service.prosody.v0.serve_port}}:52800'
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "prosody-eplugin-cfg-v0"
         target: "/config/conf.d/esync.jitsi-meet.cfg.lua"
     env_file:
       - ".project.jitsi.common.env"
       - ".project.jitsi.prosody_visitors.env"
+    <<: *secret-shim-entrypoint
+    command: ["/entrypoint.sh"]
+    secrets: *secrets-jitsi-visitors
     environment:
       PROSODY_HTTP_PORT: 52800
       XMPP_PORT: 52220
@@ -289,11 +352,16 @@ services:
     ports:
       - '{{.projects.jitsi.service.prosody.v1.serve_port}}:52801'
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "prosody-eplugin-cfg-v1"
         target: "/config/conf.d/esync.jitsi-meet.cfg.lua"
     env_file:
       - ".project.jitsi.common.env"
       - ".project.jitsi.prosody_visitors.env"
+    <<: *secret-shim-entrypoint
+    command: ["/entrypoint.sh"]
+    secrets: *secrets-jitsi-visitors
     depends_on:
       - prosody-{{.projects.jitsi.label}}-v0
     environment:
@@ -341,11 +409,16 @@ services:
     ports:
       - '{{.projects.jitsi.service.prosody.v2.serve_port}}:52802'
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "prosody-eplugin-cfg-v2"
         target: "/config/conf.d/esync.jitsi-meet.cfg.lua"
     env_file:
       - ".project.jitsi.common.env"
       - ".project.jitsi.prosody_visitors.env"
+    <<: *secret-shim-entrypoint
+    command: ["/entrypoint.sh"]
+    secrets: *secrets-jitsi-visitors
     depends_on:
       - prosody-{{.projects.jitsi.label}}-v0
       - prosody-{{.projects.jitsi.label}}-v1
@@ -390,6 +463,12 @@ services:
       - '{{.projects.jitsi.service.jicofo.port}}:8888'
     env_file:
       - ".project.jitsi.common.env"
+    <<: *secret-shim-entrypoint
+    command: ["/entrypoint.sh"]
+    secrets: *secrets-jitsi-common
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     depends_on:
       - prosody-{{.projects.jitsi.label}}
       - prosody-{{.projects.jitsi.label}}-v0

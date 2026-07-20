@@ -26,7 +26,21 @@ x-log-rule-default: &log-rule-default
       max-size: "15m"
       max-file: "3"
 
+# entrypoint для сервисов, получающих пароли через docker secrets
+x-secret-shim-entrypoint: &secret-shim-entrypoint
+  entrypoint: ["/bin/sh", "/compass_secret_shim.sh"]
+
+# пароли передаются через docker secrets, имена версионированы md5-ревизией
+secrets:
+  mysql-root-password:
+    name: "{{.stack_name}}_mysql_root_password-{{.secret_revisions.secret.project.mysql_root_password}}"
+    file: ".secret.project.mysql_root_password"
+
 configs:
+  # шим доставки docker secrets в окружение приложений
+  secret-shim:
+    name: "{{.stack_name}}_secret_shim-{{.config_revisions.global.compass_secret_shim.sh}}"
+    file: ".global.compass_secret_shim.sh"
   api-key-templates:
     name: "{{.stack_name}}_api_key_templates-{{.config_revisions.project.api_key_templates.json}}"
     file: ".project.api_key_templates.json"
@@ -45,6 +59,12 @@ services:
     env_file:
       - ".global.common.env"
       - ".project.common.env"
+    <<: *secret-shim-entrypoint
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_PASS
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
     networks:
       - "auth-private"
     deploy:
@@ -70,6 +90,8 @@ services:
         max-size: "15m"
         max-file: "3"
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "api-key-templates"
         target: "/app/configs/api_key_templates.json"
       - source: "cache-config"
@@ -80,13 +102,16 @@ services:
     networks:
       - "auth-private"
     environment:
-      MYSQL_ROOT_PASSWORD: "{{.projects.auth.service.mysql.root_password}}"
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/MYSQL_ROOT_PASSWORD
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
     deploy:
       restart_policy:
         condition: "any"
         window: "10s"
     healthcheck:
-      test: "mysqladmin ping -h localhost -P 3306 -u root --password={{.projects.auth.service.mysql.root_password}}"
+      test: 'mysqladmin ping -h localhost -P 3306 -u root --password="$(cat /run/secrets/MYSQL_ROOT_PASSWORD)"'
       interval: "5s"
       timeout: "10s"
       retries: 6

@@ -85,7 +85,7 @@ while n <= timeout:
 
 # проверяем наличие default-файлов
 output = found_php_monolith_container.exec_run(user='www-data',
-    cmd=['bash', '-c', 'php src/Compass/Pivot/sh/php/service/wait_default_files.php'])
+    cmd=['bash', '-c', ". /tmp/compass_secret_env 2>/dev/null; " + 'php src/Compass/Pivot/sh/php/service/wait_default_files.php'])
 if output.exit_code != 0:
 
     print(output.output.decode("utf-8"))
@@ -123,7 +123,7 @@ exec_script_list = [
 
 for script in exec_script_list:
 
-    output = found_php_monolith_container.exec_run(user='www-data', cmd=['bash', '-c', script])
+    output = found_php_monolith_container.exec_run(user='www-data', cmd=['bash', '-c', ". /tmp/compass_secret_env 2>/dev/null; " + script])
 
     if output.exit_code != 0:
         print(output.output.decode("utf-8"))

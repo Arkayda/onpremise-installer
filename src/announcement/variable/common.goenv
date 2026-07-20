@@ -2,17 +2,15 @@ ANNOUNCEMENT_DOMAIN="{{.projects.announcement.subdomain}}.{{.domain}}"
 CURRENT_SERVER=announcement
 ROLE=announcement
 
+# пароли (MYSQL_PASS, MYSQL_ROOT_PASSWORD, MYSQL_ROOT_PASS, MYSQL_SYSTEM_PASS,
+# RABBIT_PASS, RABBITMQ_DEFAULT_PASS) передаются через docker secrets — см. compose.goyaml
 MYSQL_HOST="mysql-{{.projects.announcement.label}}"
 MYSQL_USER="root"
-MYSQL_PASS="{{.projects.announcement.service.mysql.root_password}}"
-MYSQL_ROOT_PASSWORD="{{.projects.announcement.service.mysql.root_password}}"
-MYSQL_ROOT_PASS="{{.projects.announcement.service.mysql.root_password}}"
 MYSQL_ROOT_USER="root"
 MYSQL_PORT={{.projects.announcement.service.mysql.port}}
 
 MYSQL_SYSTEM_HOST="mysql-{{.projects.announcement.label}}"
 MYSQL_SYSTEM_USER="root"
-MYSQL_SYSTEM_PASS="{{.projects.announcement.service.mysql.root_password}}"
 MYSQL_SYSTEM_PORT={{.projects.announcement.service.mysql.port}}
 
 MCACHE_HOST=memcached-{{.projects.announcement.label}}
@@ -22,9 +20,7 @@ RABBIT_HOST=rabbit-{{.projects.announcement.label}}
 RABBIT_PORT=5672
 RABBIT_HTTP_PORT=15672
 RABBIT_USER=user
-RABBIT_PASS=root2
 RABBITMQ_DEFAULT_USER=user
-RABBITMQ_DEFAULT_PASS=root2
 
 GO_SENDER_BALANCER_GRPC_HOST=go-sender-balancer-{{.projects.announcement.label}}
 GO_SENDER_BALANCER_GRPC_PORT=2000

@@ -26,6 +26,38 @@ x-log-rule-default: &log-rule-default
       max-size: "15m"
       max-file: "3"
 
+# entrypoint для сервисов, получающих пароли через docker secrets
+# (шелл-шим читает /run/secrets/<ИМЯ_ПЕРЕМЕННОЙ> и экспортирует в окружение)
+x-secret-shim-entrypoint: &secret-shim-entrypoint
+  entrypoint: ["/bin/sh", "/compass_secret_shim.sh"]
+
+# набор секретов приложений pivot: mysql + rabbit + kafka
+x-secrets-app: &secrets-app
+  - source: mysql-root-password
+    target: MYSQL_PASS
+  - source: mysql-root-password
+    target: MYSQL_ROOT_PASSWORD
+  - source: mysql-root-password
+    target: MYSQL_SYSTEM_PASS
+  - source: rabbit-password
+    target: RABBIT_PASS
+  - source: rabbit-password
+    target: RABBITMQ_DEFAULT_PASS
+  - source: kafka-password
+    target: KAFKA_PASS
+
+# пароли передаются через docker secrets, имена версионированы md5-ревизией
+secrets:
+  mysql-root-password:
+    name: "{{.stack_name}}_mysql_root_password-{{.secret_revisions.secret.project.mysql_root_password}}"
+    file: ".secret.project.mysql_root_password"
+  rabbit-password:
+    name: "{{.stack_name}}_rabbit_password-{{.secret_revisions.secret.global.rabbit_password}}"
+    file: ".secret.global.rabbit_password"
+  kafka-password:
+    name: "{{.stack_name}}_kafka_password-{{.secret_revisions.secret.project.kafka_password}}"
+    file: ".secret.project.kafka_password"
+
 # правила логирования для go-сервисов с отправкой в локи
 # работать будет только для go, для пыхи эффекта не будет
 x-log-rule-loki-go: &log-rule-loki-go
@@ -98,6 +130,11 @@ networks:
 
 # --- DEPLOY ---
 configs:
+
+  # шим доставки docker secrets в окружение приложений
+  secret-shim:
+    name: "{{.stack_name}}_secret_shim-{{.config_revisions.global.compass_secret_shim.sh}}"
+    file: ".global.compass_secret_shim.sh"
 
   feature-conf:
     name: "{{.stack_name}}_feature_v2-{{.config_revisions.project.feature_v2.json}}"
@@ -198,13 +235,16 @@ services:
     networks:
       - "pivot-private"
     environment:
-      MYSQL_ROOT_PASSWORD: "{{.projects.pivot.service.mysql.root_password}}"
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/MYSQL_ROOT_PASSWORD
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
     deploy:
       restart_policy:
         condition: "any"
         window: "10s"
     healthcheck:
-      test: "mysqladmin ping -h localhost -P 3306 -u root --password={{.projects.pivot.service.mysql.root_password}}"
+      test: 'mysqladmin ping -h localhost -P 3306 -u root --password="$(cat /run/secrets/MYSQL_ROOT_PASSWORD)"'
       interval: "5s"
       timeout: "10s"
       retries: 6
@@ -217,12 +257,21 @@ services:
       - "pivot-private"
     env_file:
       - ".project.common.env"
+    command: ["/app/entrypoint.sh"]
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
+    secrets:
+      - source: rabbit-password
+        target: RABBITMQ_DEFAULT_PASS
     deploy:
       replicas: 1
       restart_policy:
         condition: "any"
         window: "10s"
-    <<: *log-rule-default
+    <<:
+      - *secret-shim-entrypoint
+      - *log-rule-default
 
   ## MEMCACHE
   memcached-{{.projects.pivot.label}}:
@@ -269,6 +318,9 @@ services:
       - ".global.solution.env"
       - ".project.common.env"
       - ".project.php_pivot.env"
+    # оригинальный ENTRYPOINT php-образа переносится в command
+    command: ["bash", "/app/entrypoint.sh"]
+    secrets: *secrets-app
     networks:
       - "pivot-private"
     volumes:
@@ -285,6 +337,8 @@ services:
       timeout: "1s"
       retries: 30
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "feature-conf"
         target: "/app/src/Compass/Pivot/conf/feature_v2.json"
       - source: "feature-v1-conf"
@@ -312,6 +366,7 @@ services:
       - source: "bot-conf"
         target: "/app/src/Compass/Pivot/sh/start/bot_info_list.json"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
 
@@ -328,11 +383,15 @@ services:
       CDN_URL: "{{.protocol}}://{{.projects.file_default_nodes.file_default.subdomain}}.{{.domain}}/"
       SOCKET_KEY_INTERCOM: {{.security_keys.intercom.socket_key_intercom}}
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "file-nodes"
         target: "/app/src/Compass/FileBalancer/api/conf/node.php"
     env_file:
       - ".global.common.env"
       - ".project.common.env"
+    command: ["bash", "/app/entrypoint.sh"]
+    secrets: *secrets-app
     networks:
       - "pivot-private"
     healthcheck:
@@ -341,6 +400,7 @@ services:
       timeout: "25s"
       retries: 10
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     volumes:
@@ -360,6 +420,10 @@ services:
       - ".global.common.env"
       - ".project.common.env"
       - ".project.go_pivot_cache.env"
+    secrets: *secrets-app
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "pivot-private"
     healthcheck:
@@ -368,6 +432,7 @@ services:
       timeout: "10s"
       retries: 3
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     volumes:
@@ -387,6 +452,10 @@ services:
       - ".global.common.env"
       - ".project.common.env"
       - ".project.go_activity.env"
+    secrets: *secrets-app
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "pivot-private"
     healthcheck:
@@ -395,6 +464,7 @@ services:
       timeout: "10s"
       retries: 3
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     volumes:
@@ -417,9 +487,12 @@ services:
       - ".project.common.env"
       - ".project.go_pusher.env"
       - ".global.solution.env"
+    secrets: *secrets-app
     networks:
       - "pivot-private"
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "go-pusher-firebase-compass-key"
         target: "/app/private/firebase_compass_key.json"
       - source: "go-pusher-firebase-comteam-key"
@@ -432,6 +505,7 @@ services:
       timeout: "10s"
       retries: 3
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     volumes:
@@ -450,6 +524,10 @@ services:
     env_file:
       - ".global.common.env"
       - ".project.common.env"
+    secrets: *secrets-app
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "pivot-private"
     healthcheck:
@@ -458,6 +536,7 @@ services:
       timeout: "10s"
       retries: 3
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     volumes:
@@ -482,6 +561,10 @@ services:
     env_file:
       - ".global.common.env"
       - ".project.common.env"
+    secrets: *secrets-app
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "pivot-private"
     healthcheck:
@@ -490,6 +573,7 @@ services:
       timeout: "10s"
       retries: 3
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     volumes:
@@ -507,9 +591,12 @@ services:
       - ".global.common.env"
       - ".global.go_collector_request_balancing.env"
       - ".project.common.env"
+    secrets: *secrets-app
     networks:
       - "pivot-private"
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "go-collector-agent-sharding-conf"
         target: "/app/api/conf/sharding.example.json"
     healthcheck:
@@ -518,6 +605,7 @@ services:
       timeout: "25s"
       retries: 10
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     volumes:
@@ -543,9 +631,14 @@ services:
       - ".global.common.env"
       - ".project.common.env"
       - ".project.event.env"
+    secrets: *secrets-app
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "pivot-private"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     healthcheck:
@@ -566,7 +659,13 @@ services:
       - ".global.common.env"
       - ".project.common.env"
       - ".project.php_premise.env"
+    # оригинальный ENTRYPOINT php-образа переносится в command
+    # (проверить script/show_image_entrypoints.py — образ из onpremise-registry)
+    command: ["bash", "/app/entrypoint.sh"]
+    secrets: *secrets-app
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "php-premise-proxy-conf"
         target: "/app/src/Compass/Premise/api/conf/proxy.php"
     networks:
@@ -577,6 +676,7 @@ services:
       timeout: "25s"
       retries: 10
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     volumes:

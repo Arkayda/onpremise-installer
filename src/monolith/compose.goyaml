@@ -1,10 +1,41 @@
 version: '3.8'
 
-{{- if ne .database_encryption.mode "none"}}
+# Пароли передаются в контейнеры через docker secrets (не через env).
+# Имена объектов версионированы md5-ревизией содержимого — при смене пароля
+# создается новый секрет и сервис обновляется (аналогично config_revisions).
 secrets:
+{{- if ne .database_encryption.mode "none"}}
   compass_database_encryption_secret_key:
     external: true
 {{- end}}
+  # пароль root для mysql монолита (driver=docker — пароль mysql-контейнера,
+  # driver=host — пароль внешней базы; соответствует .project.override.env)
+  mysql-root-password:
+    name: "{{.stack_name}}_mysql_root_password-{{.secret_revisions.secret.project.mysql_root_password}}"
+    file: ".secret.project.mysql_root_password"
+  # пароль root для mysql домино-инстанса (php-migration работает с бд домино)
+  domino-mysql-root-password:
+    name: "{{.stack_name}}_domino_mysql_root_password-{{.secret_revisions.secret.project.domino.mysql_root_password}}"
+    file: ".secret.project.domino.mysql_root_password"
+  # пароль root для mysql сервиса auth
+  auth-mysql-root-password:
+    name: "{{.stack_name}}_auth_mysql_root_password-{{.secret_revisions.secret.project.auth.mysql_root_password}}"
+    file: ".secret.project.auth.mysql_root_password"
+  # пароль rabbitmq
+  rabbit-password:
+    name: "{{.stack_name}}_rabbit_password-{{.secret_revisions.secret.global.rabbit_password}}"
+    file: ".secret.global.rabbit_password"
+  # пароль kafka (подключение php/go сервисов)
+  kafka-password:
+    name: "{{.stack_name}}_kafka_password-{{.secret_revisions.secret.project.pivot.kafka_password}}"
+    file: ".secret.project.pivot.kafka_password"
+  # пароли для резервного копирования
+  backup-user-password:
+    name: "{{.stack_name}}_backup_user_password-{{.secret_revisions.secret.global.backup_user_password}}"
+    file: ".secret.global.backup_user_password"
+  backup-archive-password:
+    name: "{{.stack_name}}_backup_archive_password-{{.secret_revisions.secret.global.backup_archive_password}}"
+    file: ".secret.global.backup_archive_password"
 
 ## Используем тут идентификатор по умолчанию, в теории можно пройтись циклом и поднять все проекты,
 ## но там есть проблема — при деплое записывается имя проекта, ан е резолвится его идентификатор
@@ -66,6 +97,47 @@ x-healthcheck-go-2000: &healthcheck-go-2000
     timeout: "25s"
     retries: 10
 
+# entrypoint для сервисов, получающих пароли через docker secrets:
+# шелл-шим (config secret-shim) читает файлы /run/secrets/<ИМЯ_ПЕРЕМЕННОЙ>
+# и экспортирует их в окружение перед запуском оригинальной команды.
+# ВАЖНО: у go-образов оригинальная команда лежит в CMD и доезжает до шима сама,
+# у php-образов ENTRYPOINT ["bash", "/app/entrypoint.sh"] — поэтому таким сервисам
+# оригинальный entrypoint переносится в command явно.
+x-secret-shim-entrypoint: &secret-shim-entrypoint
+  entrypoint: ["/bin/sh", "/compass_secret_shim.sh"]
+
+# набор секретов: пароль mysql монолита (все алиасы) + пароль rabbitmq
+x-secrets-mysql-rabbit: &secrets-mysql-rabbit
+  - source: mysql-root-password
+    target: MYSQL_PASS
+  - source: mysql-root-password
+    target: MYSQL_ROOT_PASSWORD
+  - source: mysql-root-password
+    target: MYSQL_ROOT_PASS
+  - source: mysql-root-password
+    target: MYSQL_SYSTEM_PASS
+  - source: rabbit-password
+    target: RABBIT_PASS
+  - source: rabbit-password
+    target: RABBITMQ_DEFAULT_PASS
+
+# то же + пароль kafka (для сервисов, подключающих .project.pivot.common.env)
+x-secrets-mysql-rabbit-kafka: &secrets-mysql-rabbit-kafka
+  - source: mysql-root-password
+    target: MYSQL_PASS
+  - source: mysql-root-password
+    target: MYSQL_ROOT_PASSWORD
+  - source: mysql-root-password
+    target: MYSQL_ROOT_PASS
+  - source: mysql-root-password
+    target: MYSQL_SYSTEM_PASS
+  - source: rabbit-password
+    target: RABBIT_PASS
+  - source: rabbit-password
+    target: RABBITMQ_DEFAULT_PASS
+  - source: kafka-password
+    target: KAFKA_PASS
+
 {{$network := concatne  "-" .stack_name "private" }}
 {{$mysql_shared_network := "monolith-mysql-shared" }}
 # --- DEFINES ---
@@ -95,6 +167,10 @@ volumes:
 configs:
 
   ## ОБЩИЕ КОНФИГУРАЦИИ
+  # шим доставки docker secrets в окружение приложений
+  secret-shim:
+    name: "{{.stack_name}}_secret_shim-{{.config_revisions.global.compass_secret_shim.sh}}"
+    file: ".global.compass_secret_shim.sh"
   # конфигурация веб-сервера
   nginx-conf:
     name: "{{.stack_name}}_nginx_conf-{{.config_revisions.global.nginx.conf}}"
@@ -392,6 +468,27 @@ configs:
     name: "{{.stack_name}}_proxy-thread-conf-{{.config_revisions.project.domino.proxy_thread.php}}"
     file: ".project.domino.proxy_thread.php"
 
+  # настройки kafka
+  {{ if eq .siem.enabled_driver "kafka" }}
+  kafka-topics:
+    name: "{{.stack_name}}_kafka-topics-{{.config_revisions.project.kafka.kafka_topics.yaml}}"
+    file: ".project.kafka.kafka_topics.yaml"
+  kafka-acls:
+    name: "{{.stack_name}}_kafka-acls-{{.config_revisions.project.kafka.kafka_acls.yaml}}"
+    file: ".project.kafka.kafka_acls.yaml"
+  kafka-server-jaas:
+    name: "{{.stack_name}}_kafka-server-jaas-{{.config_revisions.project.kafka.kafka_server_jaas.conf}}"
+    file: ".project.kafka.kafka_server_jaas.conf"
+  kafka-client:
+    name: "{{.stack_name}}_kafka-client-{{.config_revisions.project.kafka.kafka_client.properties}}"
+    file: ".project.kafka.kafka_client.properties"
+  kafka-server:
+    name: "{{.stack_name}}_kafka-server-{{.config_revisions.project.kafka.kafka_server.properties}}"
+    file: ".project.kafka.kafka_server.properties"
+  kafka-users:
+    name: "{{.stack_name}}_kafka-users-{{.config_revisions.project.kafka.kafka_users.yaml}}"
+    file: ".project.kafka.kafka_users.yaml"
+  {{ end }}
 # файл композиции монолита
 services:
 
@@ -475,6 +572,13 @@ services:
           - "rabbit-{{$domino.label}}"
     env_file:
       - ".project.monolith.env"
+    command: ["/app/entrypoint.sh"]
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
+    secrets:
+      - source: rabbit-password
+        target: RABBITMQ_DEFAULT_PASS
     deploy:
       replicas: 1
       restart_policy:
@@ -485,7 +589,9 @@ services:
         constraints:
           - node.labels.role == {{$node_label_role}}
       {{- end}}
-    <<: *log-rule-default
+    <<:
+      - *secret-shim-entrypoint
+      - *log-rule-default
 
   # MEMCACHE
   memcached-{{.projects.monolith.label}}:
@@ -545,7 +651,10 @@ services:
           - "mysql-{{.projects.auth.label}}"
       {{- end}}
     environment:
-      MYSQL_ROOT_PASSWORD: "{{.projects.pivot.service.mysql.root_password}}"
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/MYSQL_ROOT_PASSWORD
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
     {{- if gt .mysql_server_id 0}}
     command: >
       mysqld
@@ -582,7 +691,7 @@ services:
           - node.labels.role == {{$node_label_role}}
       {{- end}}
     healthcheck:
-      test: "mysqladmin ping -h localhost -P 3306 -u root --password={{.projects.pivot.service.mysql.root_password}}"
+      test: 'mysqladmin ping -h localhost -P 3306 -u root --password="$(cat /run/secrets/MYSQL_ROOT_PASSWORD)"'
       interval: "5s"
       timeout: "10s"
       retries: 30
@@ -614,6 +723,10 @@ services:
       - ".project.pivot.common.env"
       - ".project.monolith.env"
       - ".project.override.env"
+    secrets: *secrets-mysql-rabbit-kafka
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       monolith-{{$service_label}}-private:
         aliases:
@@ -624,6 +737,7 @@ services:
       - "{{$domino.company_config_dir}}/:/config"
       - "{{.company_config_mount_path}}:/pivot_config"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
       - *healthcheck-go-2000
@@ -643,12 +757,17 @@ services:
       - ".global.common.env"
       - ".project.monolith.env"
       - ".project.override.env"
+    secrets: *secrets-mysql-rabbit
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       monolith-{{$service_label}}-private:
         aliases:
           - "go-sender-balancer-{{.projects.pivot.label}}"
           - "go-sender-balancer-{{.projects.announcement.label}}"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
       - *healthcheck-go-2000
@@ -677,6 +796,10 @@ services:
       - ".global.common.env"
       - ".project.monolith.env"
       - ".project.override.env"
+    secrets: *secrets-mysql-rabbit
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       monolith-{{$service_label}}-private:
         aliases:
@@ -684,6 +807,7 @@ services:
           - "go-sender-{{.projects.pivot.label}}"
           - "go-sender-{{$domino.label}}"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
       - *healthcheck-go-2000
@@ -747,6 +871,10 @@ services:
       - ".project.pivot.go_pivot_cache.env"
       - ".project.monolith.env"
       - ".project.override.env"
+    secrets: *secrets-mysql-rabbit-kafka
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "monolith-{{$service_label}}-private"
     healthcheck:
@@ -755,6 +883,7 @@ services:
       timeout: "10s"
       retries: 3
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     volumes:
@@ -780,6 +909,10 @@ services:
       - ".project.pivot.go_activity.env"
       - ".project.monolith.env"
       - ".project.override.env"
+    secrets: *secrets-mysql-rabbit-kafka
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "monolith-{{$service_label}}-private"
     healthcheck:
@@ -788,6 +921,7 @@ services:
       timeout: "10s"
       retries: 3
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     volumes:
@@ -815,9 +949,12 @@ services:
       - ".project.pivot.go_pusher.env"
       - ".project.monolith.env"
       - ".project.override.env"
+    secrets: *secrets-mysql-rabbit-kafka
     networks:
       - "monolith-{{$service_label}}-private"
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "go-pusher-firebase-compass-key"
         target: "/app/private/firebase_compass_key.json"
       - source: "go-pusher-firebase-comteam-key"
@@ -830,6 +967,7 @@ services:
       timeout: "10s"
       retries: 3
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     volumes:
@@ -853,9 +991,14 @@ services:
       - ".project.userbot.common.env"
       - ".project.monolith.env"
       - ".project.override.env"
+    secrets: *secrets-mysql-rabbit
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "monolith-{{$service_label}}-private"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *healthcheck-go-2000
       - *log-rule-default
@@ -876,9 +1019,13 @@ services:
       - ".project.file.common.env"
       - ".project.file.php_file_node.env"
       - ".project.override.env"
+    # оригинальный ENTRYPOINT php-образа переносится в command
+    command: ["bash", "/app/entrypoint.sh"]
+    secrets: *secrets-mysql-rabbit
     networks:
       - "monolith-{{$service_label}}-private"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
       - *healthcheck-php-9000
@@ -888,6 +1035,8 @@ services:
       - "{{.root_mount_path}}/files:/app/www/files"
       - "{{.company_config_mount_path}}:/pivot_config"
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "icap-conf-file"
         target: "/app/src/Compass/FileNode/api/conf/icap.php"
       - source: "file-node-crontab"
@@ -976,6 +1125,8 @@ services:
       - ".project.userbot.common.env"
       - ".project.file.common.env"
       - ".project.override.env"
+    # оригинальный ENTRYPOINT php-образа переносится в command
+    command: ["bash", "/app/entrypoint.sh"]
     environment:
       CDN_URL: "{{.protocol}}://{{entrypoint .projects.file.file1.subdomain .domain .url_path .projects.file.file1.url_path 1}}/"
       SOCKET_KEY_INTERCOM: {{.security_keys.intercom.socket_key_intercom}}
@@ -1004,10 +1155,13 @@ services:
         target: "/app/www/default_file/"
       - "{{.root_mount_path}}/custom_files:/app/www/custom_files/"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
       - *healthcheck-php-9000
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "feature-conf"
         target: "/app/src/Compass/Pivot/conf/feature_v2.json"
       - source: "feature-v1-conf"
@@ -1086,10 +1240,24 @@ services:
         target: "/app/src/Compass/Conversation/api/conf/proxy.php"
       - source: "proxy-thread-conf"
         target: "/app/src/Compass/Thread/api/conf/proxy.php"
-    {{- if ne .database_encryption.mode "none"}}
     secrets:
+      - source: mysql-root-password
+        target: MYSQL_PASS
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASS
+      - source: mysql-root-password
+        target: MYSQL_SYSTEM_PASS
+      - source: rabbit-password
+        target: RABBIT_PASS
+      - source: rabbit-password
+        target: RABBITMQ_DEFAULT_PASS
+      - source: kafka-password
+        target: KAFKA_PASS
+      {{- if ne .database_encryption.mode "none"}}
       - "compass_database_encryption_secret_key"
-    {{- end}}
+      {{- end}}
 
   # PHP_MIGRATION
   php-migration-{{$domino.label}}:
@@ -1102,6 +1270,22 @@ services:
       - ".global.common.env"
       - ".project.override.env"
       - ".project.domino.common.env"
+    # оригинальный ENTRYPOINT php-образа переносится в command;
+    # пароль берется от домино-инстанса (.project.domino.common.env подключается последним)
+    command: ["bash", "/app/entrypoint.sh"]
+    secrets:
+      - source: domino-mysql-root-password
+        target: MYSQL_PASS
+      - source: domino-mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
+      - source: domino-mysql-root-password
+        target: MYSQL_ROOT_PASS
+      - source: domino-mysql-root-password
+        target: MYSQL_SYSTEM_PASS
+      - source: rabbit-password
+        target: RABBIT_PASS
+      - source: rabbit-password
+        target: RABBITMQ_DEFAULT_PASS
     environment:
       MYSQL_DOMINO_HOST: "{{$domino.mysql_host}}"
       GO_DATABASE_CONTROLLER_HOST: "{{$domino.mysql_host}}"
@@ -1133,10 +1317,13 @@ services:
     volumes:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
       - *healthcheck-php-9000
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "domino-hosts-pivot"
         target: "/app/src/Compass/Migration/api/conf/domino.php"
 
@@ -1159,6 +1346,10 @@ services:
       - ".project.domino.go_company_cache.env"
       - ".project.monolith.env"
       - ".project.override.env"
+    secrets: *secrets-mysql-rabbit
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "monolith-{{$service_label}}-private"
     volumes:
@@ -1166,6 +1357,7 @@ services:
       - "{{$domino.company_config_dir}}/:/config"
       - "{{.company_config_mount_path}}:/pivot_config"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
       - *healthcheck-go-2000
@@ -1185,6 +1377,10 @@ services:
       - ".project.domino.common.env"
       - ".project.monolith.env"
       - ".project.override.env"
+    secrets: *secrets-mysql-rabbit
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "monolith-{{$service_label}}-private"
     volumes:
@@ -1192,6 +1388,7 @@ services:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
       - "{{.company_config_mount_path}}:/pivot_config"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
       - *healthcheck-go-2000
@@ -1213,6 +1410,10 @@ services:
       - ".project.domino.common.env"
       - ".project.monolith.env"
       - ".project.override.env"
+    secrets: *secrets-mysql-rabbit
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "monolith-{{$service_label}}-private"
     volumes:
@@ -1220,6 +1421,7 @@ services:
       - "{{$domino.company_config_dir}}/:/config"
       - "{{.company_config_mount_path}}:/pivot_config"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
       - *healthcheck-go-2000
@@ -1229,7 +1431,7 @@ services:
     image: "{{.registry_compass_path}}/go_database_controller:{{$domino.service.go_database_controller.tag}}"
     {{- if eq .database_connection.driver "docker"}}
     depends_on:
-      - "mysql-{{$domino.label}}"
+      - "mysql-{{.projects.monolith.label}}"
     {{- end}}
     environment:
       LOGGING_LEVEL: 2
@@ -1244,8 +1446,6 @@ services:
       DOMINO_TIER: {{$domino.tier}}
       STACK_NAME_PREFIX: "{{.stack_name_prefix}}"
       BACKUP_USER: {{.backup_user}}
-      BACKUP_USER_PASSWORD: {{.backup_user_password}}
-      BACKUP_ARCHIVE_PASSWORD: {{.backup_archive_password}}
       BACKUP_SSH_KEY_FILE_PATH: {{$domino.service}}
       DOMINO_MYSQL_INNODB_FLUSH_METHOD: {{.domino_mysql_innodb_flush_method}}
       DOMINO_MYSQL_INNODB_FLUSH_LOG_AT_TIMEOUT: {{.domino_mysql_innodb_flush_log_at_timeout}}
@@ -1262,6 +1462,23 @@ services:
       - ".project.monolith.env"
       - ".project.override.env"
       - ".project.domino.go_database_controller.env"
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_PASS
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASS
+      - source: mysql-root-password
+        target: MYSQL_SYSTEM_PASS
+      - source: rabbit-password
+        target: RABBIT_PASS
+      - source: rabbit-password
+        target: RABBITMQ_DEFAULT_PASS
+      - source: backup-user-password
+        target: BACKUP_USER_PASSWORD
+      - source: backup-archive-password
+        target: BACKUP_ARCHIVE_PASSWORD
     ports:
       - "{{$domino.go_database_controller_port}}:{{$domino.go_database_controller_port}}"
     networks:
@@ -1273,6 +1490,7 @@ services:
       - "{{.root_mount_path}}/mysql_ssl:/etc/mysql/ssl"
       - "{{.company_config_mount_path}}:/pivot_config"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     healthcheck:
@@ -1280,11 +1498,13 @@ services:
       interval: "5s"
       timeout: "25s"
       retries: 10
-    {{- if eq .database_connection.driver "host"}}
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
+      {{- if eq .database_connection.driver "host"}}
       - source: "predefined-db"
         target: "/app/api/conf/predefined_db.json"
-    {{- end}}
+      {{- end}}
 
   {{- if eq .file_access_restriction_mode "auth"}}
   # GO_FILE_AUTH
@@ -1295,6 +1515,20 @@ services:
       - ".project.file.common.env"
       - ".project.file.go_file_auth.env"
       - ".project.monolith.env"
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_PASS
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
+      - source: mysql-root-password
+        target: MYSQL_SYSTEM_PASS
+      - source: rabbit-password
+        target: RABBIT_PASS
+      - source: rabbit-password
+        target: RABBITMQ_DEFAULT_PASS
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "monolith-{{$service_label}}-private"
     volumes:
@@ -1302,6 +1536,7 @@ services:
     environment:
       TCP_PORT: 1000
       GRPC_PORT: 2000
+    <<: *secret-shim-entrypoint
     deploy:
       replicas: 1
       restart_policy:
@@ -1341,11 +1576,22 @@ services:
       - ".global.common.env"
       - ".project.license.common.env"
       - ".project.monolith.env"
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_PASS
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
+      - source: rabbit-password
+        target: RABBIT_PASS
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       monolith-{{$service_label}}-private:
         aliases:
           - "go-local-license-{{.projects.license.label}}"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     healthcheck:
@@ -1368,11 +1614,22 @@ services:
       - ".project.license.common.env"
       - ".project.license.license_manager.env"
       - ".project.monolith.env"
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_PASS
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
+      - source: rabbit-password
+        target: RABBIT_PASS
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       monolith-{{$service_label}}-private:
         aliases:
           - "go-license-manager-{{.projects.license.label}}"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     healthcheck:
@@ -1419,8 +1676,15 @@ services:
     env_file:
       - ".global.common.env"
       - ".project.auth.common.env"
+    # пароль mysql сервиса auth (у go-auth свой инстанс базы)
+    secrets:
+      - source: auth-mysql-root-password
+        target: MYSQL_PASS
+      - source: auth-mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
     networks:
       - "monolith-{{$service_label}}-private"
+    <<: *secret-shim-entrypoint
     deploy:
       replicas: 1
       restart_policy:
@@ -1449,6 +1713,8 @@ services:
         max-size: "15m"
         max-file: "3"
     configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
       - source: "api-key-templates"
         target: "/app/configs/api_key_templates.json"
       - source: "cache-config"
@@ -1482,3 +1748,44 @@ services:
       - source: "outlook-addin-conf"
         target: "/app/config.json"
   {{- end}}
+# KAFKA
+  {{ if eq .siem.enabled_driver "kafka" }}
+  kafka-{{.projects.kafka.label}}:
+    image: {{.registry_service_path}}/kafka:{{.projects.kafka.service.kafka.tag}}
+    ports:
+      - target: 9092
+        published: {{.projects.kafka.service.kafka.external_port}}
+        protocol: tcp
+        mode: host
+      - target: 9094
+        published: {{.siem.driver_data.listen_port}}
+        protocol: tcp
+    networks:
+      - "monolith-{{$service_label}}-private"
+    env_file:
+      - ".project.kafka.common.env"
+    volumes:
+      - "{{.root_mount_path}}/kafka:/var/lib/kafka/data"
+      - {{ concatne "/" .root_mount_path "nginx" "ssl" "compassRootCA.crt" }}:/etc/kafka/secrets/internal_ca.pem
+      - {{ concatne "." ( concatne  "/" .root_mount_path "nginx" "ssl" .projects.kafka.host ) "pem" }}:/etc/kafka/secrets/internal_broker.pem
+      - {{ concatne "." ( concatne  "/" .root_mount_path "nginx" "ssl" .domain ) "pem" }}:/etc/kafka/secrets/external_broker.pem
+    configs:
+      - source: "kafka-server-jaas"
+        target: "/etc/kafka/secrets/kafka_server_jaas.conf"
+      - source: "kafka-topics"
+        target: "/etc/kafka/topics.yaml"
+      - source: "kafka-acls"
+        target: "/etc/kafka/acls.yaml"
+      - source: "kafka-users"
+        target: "/etc/kafka/users.yaml"
+      - source: "kafka-client"
+        target: "/etc/kafka/client.properties"
+      - source: "kafka-server"
+        target: "/mnt/shared/config/server.properties"
+        uid: "1000"
+        gid: "1000"
+        mode: 0644
+    <<:
+      - *default-deploy
+      - *log-rule-default
+  {{ end }}

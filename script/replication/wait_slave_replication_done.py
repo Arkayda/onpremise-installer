@@ -131,7 +131,7 @@ def wait_for_replication(mysql_container, mysql_user, mysql_pass):
     for attempt in range(max_tries):
 
         try:
-            result = mysql_container.exec_run(cmd)
+            result = mysql_container.exec_run(scriptutils.with_secret_env(cmd))
         except docker.errors.NotFound:
             return
         except Exception as e:

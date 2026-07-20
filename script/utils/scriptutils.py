@@ -187,6 +187,36 @@ def merge(a: dict, b: dict, path=[]):
     return a
 
 
+def with_secret_env(cmd):
+    """
+    Оборачивает команду для exec_run/exec_create в контейнере так, чтобы перед
+    выполнением подгрузились секреты, экспортированные шимом compass_secret_shim
+    в /tmp/compass_secret_env (docker exec видит только Config.Env контейнера,
+    а не переменные, экспортированные процессом контейнера).
+    Безопасна для контейнеров без шима: source несуществующего файла — no-op.
+    """
+
+    import shlex
+
+    source_line = ". /tmp/compass_secret_env 2>/dev/null; "
+
+    # частый случай ["bash"|"sh", "-c", "<скрипт>"] — добавляем source в сам скрипт
+    if (
+        isinstance(cmd, (list, tuple))
+        and len(cmd) == 3
+        and str(cmd[0]) in ("bash", "sh", "/bin/bash", "/bin/sh")
+        and str(cmd[1]) == "-c"
+    ):
+        return [cmd[0], "-c", source_line + str(cmd[2])]
+
+    if isinstance(cmd, (list, tuple)):
+        command = " ".join(shlex.quote(str(part)) for part in cmd)
+    else:
+        command = str(cmd)
+
+    return ["/bin/sh", "-c", source_line + command]
+
+
 def find_container_mysql_container(client: docker.DockerClient, mysql_type: str, domino_id: str, port: int = 0):
     """
     Ищет контейнеры по правилам:
@@ -375,7 +405,7 @@ def generate_random_password(size: int) -> str:
     alnum = lower + upper + digits
 
     # берем спецсимволы без запрещенных
-    _PROHIBITED_SYMBOLS = '"\'\\`$-={}|%@()#:'
+    _PROHIBITED_SYMBOLS = '"\'\\`$-={}|%@()#:,[]'
     specials = string.punctuation.translate(str.maketrans('', '', _PROHIBITED_SYMBOLS))
     if not specials:
         print(error("после исключений не осталось допустимых спецсимволов"))

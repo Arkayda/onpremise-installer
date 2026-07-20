@@ -164,7 +164,7 @@ def unlock_backup(db_list: list[DbConfig]):
                 container = prepare_db(db)
                 if container:
                     cmd = f"mysql -h localhost -u {db.root_user} -p{db.root_password} -e \"{kill_sql}\""
-                    result = container.exec_run(cmd)
+                    result = container.exec_run(scriptutils.with_secret_env(cmd))
                     if result.exit_code == 0:
                         print(f"[OK] Команда очистки выполнена в контейнере {container.name}")
                     else:

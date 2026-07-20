@@ -2,8 +2,27 @@ version: '3.8'
 
 # файл композиции для announcement-части
 
+# entrypoint для сервисов, получающих пароли через docker secrets
+# (шелл-шим читает /run/secrets/<ИМЯ_ПЕРЕМЕННОЙ> и экспортирует в окружение)
+x-secret-shim-entrypoint: &secret-shim-entrypoint
+  entrypoint: ["/bin/sh", "/compass_secret_shim.sh"]
+
+# пароли передаются через docker secrets, имена версионированы md5-ревизией
+secrets:
+  mysql-root-password:
+    name: "{{.stack_name}}_mysql_root_password-{{.secret_revisions.secret.project.mysql_root_password}}"
+    file: ".secret.project.mysql_root_password"
+  rabbit-password:
+    name: "{{.stack_name}}_rabbit_password-{{.secret_revisions.secret.global.rabbit_password}}"
+    file: ".secret.global.rabbit_password"
+
 # --- DEPLOY ---
 configs:
+
+  # шим доставки docker secrets в окружение приложений
+  secret-shim:
+    name: "{{.stack_name}}_secret_shim-{{.config_revisions.global.compass_secret_shim.sh}}"
+    file: ".global.compass_secret_shim.sh"
 
   nginx-sites:
     name: "{{.stack_name}}_nginx_sites-{{.config_revisions.project.nginx_sites.conf}}"
@@ -44,13 +63,16 @@ services:
     networks:
       - "announcement-private"
     environment:
-      MYSQL_ROOT_PASSWORD: "{{.projects.announcement.service.mysql.root_password}}"
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/MYSQL_ROOT_PASSWORD
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
     deploy:
       restart_policy:
         condition: "any"
         window: "10s"
     healthcheck:
-      test: "mysqladmin ping -h localhost -P 3306 -u root --password={{.projects.announcement.service.mysql.root_password}}"
+      test: 'mysqladmin ping -h localhost -P 3306 -u root --password="$(cat /run/secrets/MYSQL_ROOT_PASSWORD)"'
       interval: "5s"
       timeout: "10s"
       retries: 6
@@ -67,11 +89,19 @@ services:
       - "announcement-private"
     env_file:
       - ".project.common.env"
+    command: ["/app/entrypoint.sh"]
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
+    secrets:
+      - source: rabbit-password
+        target: RABBITMQ_DEFAULT_PASS
     deploy:
       replicas: 1
       restart_policy:
         condition: "any"
         window: "10s"
+    <<: *secret-shim-entrypoint
     logging:
       driver: "json-file"
       options:
@@ -113,6 +143,25 @@ services:
       - ".global.common.env"
       - ".project.common.env"
       - ".project.php_announcement.env"
+    # оригинальный ENTRYPOINT php-образа переносится в command
+    command: ["bash", "/app/entrypoint.sh"]
+    <<: *secret-shim-entrypoint
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_PASS
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASS
+      - source: mysql-root-password
+        target: MYSQL_SYSTEM_PASS
+      - source: rabbit-password
+        target: RABBIT_PASS
+      - source: rabbit-password
+        target: RABBITMQ_DEFAULT_PASS
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "announcement-private"
     deploy:
@@ -154,6 +203,23 @@ services:
     env_file:
       - ".global.common.env"
       - ".project.common.env"
+    <<: *secret-shim-entrypoint
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_PASS
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASS
+      - source: mysql-root-password
+        target: MYSQL_SYSTEM_PASS
+      - source: rabbit-password
+        target: RABBIT_PASS
+      - source: rabbit-password
+        target: RABBITMQ_DEFAULT_PASS
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "announcement-private"
     deploy:
@@ -200,6 +266,23 @@ services:
     env_file:
       - ".global.common.env"
       - ".project.common.env"
+    <<: *secret-shim-entrypoint
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_PASS
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASS
+      - source: mysql-root-password
+        target: MYSQL_SYSTEM_PASS
+      - source: rabbit-password
+        target: RABBIT_PASS
+      - source: rabbit-password
+        target: RABBITMQ_DEFAULT_PASS
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "announcement-private"
     deploy:

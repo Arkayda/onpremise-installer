@@ -169,7 +169,7 @@ def manticore_replication(found_container: docker.models.containers.Container, m
     cmd = "mariadb --skip-ssl -h %s -P %s -e \"%s\"" % (manticore_host, manticore_external_port, mysql_command)
 
     try:
-        result = found_container.exec_run(cmd)
+        result = found_container.exec_run(scriptutils.with_secret_env(cmd))
     except docker.errors.NotFound:
         print("\nНе смогли найти контейнер manticore")
         return

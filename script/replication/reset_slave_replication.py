@@ -175,7 +175,7 @@ def mysql_restart_replication(found_container: docker.models.containers.Containe
     cmd = "mysql -h %s -u %s -p%s -e \"%s\"" % (mysql_host, mysql_user, mysql_pass, mysql_command)
 
     try:
-        result = found_container.exec_run(cmd)
+        result = found_container.exec_run(scriptutils.with_secret_env(cmd))
     except docker.errors.NotFound:
         print("\nНе нашли mysql контейнер для space_id %d" % space_id)
         return

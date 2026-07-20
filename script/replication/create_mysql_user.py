@@ -152,7 +152,7 @@ def start():
                     print("Создаём mysql-пользователя для компании %s" % space_id)
                 found_container = scriptutils.find_container_mysql_container(client, mysql_type, domino_id,
                                                                              space_config_obj.port)
-                result = found_container.exec_run(cmd)
+                result = found_container.exec_run(scriptutils.with_secret_env(cmd))
         else:
             space_id = space_id_list[int(chosen_space_index) - 1]
             space_config_obj = space_config_obj_dict[space_id]
@@ -160,7 +160,7 @@ def start():
                 print("Создаём mysql-пользователя для компании %s" % space_id)
             found_container = scriptutils.find_container_mysql_container(client, mysql_type, domino_id,
                                                                          space_config_obj.port)
-            result = found_container.exec_run(cmd)
+            result = found_container.exec_run(scriptutils.with_secret_env(cmd))
     else:
         mysql_user = current_values["projects"]["monolith"]["service"]["mysql"]["user"]
         mysql_pass = current_values["projects"]["monolith"]["service"]["mysql"]["password"]
@@ -171,7 +171,7 @@ def start():
         if not found_container:
             print("Не удалось найти контейнер pivot mysql!")
             sys.exit(1)
-        result = found_container.exec_run(cmd)
+        result = found_container.exec_run(scriptutils.with_secret_env(cmd))
 
     if result.exit_code != 0:
         print("Ошибка при создании mysql-пользователя")

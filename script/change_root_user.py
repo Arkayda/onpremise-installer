@@ -96,6 +96,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
+        ". /tmp/compass_secret_env 2>/dev/null; " + 
         "php /app/src/Compass/Pivot/sh/php/service/change_root_user.php --user-id=%s"
         % user_id,
     ],

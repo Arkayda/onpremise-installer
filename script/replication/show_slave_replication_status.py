@@ -259,7 +259,7 @@ def mysql_show_slave_replication_status(found_container: docker.models.container
     cmd = f"mysql -h {mysql_host} -u {mysql_user} -p{mysql_pass} -e \"SHOW SLAVE STATUS\\G\""
 
     try:
-        result = found_container.exec_run(cmd)
+        result = found_container.exec_run(scriptutils.with_secret_env(cmd))
     except docker.errors.NotFound:
         print("\nНе нашли mysql контейнер для компании")
         return false, ""

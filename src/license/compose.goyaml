@@ -26,6 +26,22 @@ x-log-rule-default: &log-rule-default
       max-size: "15m"
       max-file: "3"
 
+# entrypoint для сервисов, получающих пароли через docker secrets
+x-secret-shim-entrypoint: &secret-shim-entrypoint
+  entrypoint: ["/bin/sh", "/compass_secret_shim.sh"]
+
+# пароль mysql (база pivot) передается через docker secrets
+secrets:
+  mysql-root-password:
+    name: "{{.stack_name}}_mysql_root_password-{{.secret_revisions.secret.project.mysql_root_password}}"
+    file: ".secret.project.mysql_root_password"
+
+# шим доставки docker secrets в окружение приложений
+configs:
+  secret-shim:
+    name: "{{.stack_name}}_secret_shim-{{.config_revisions.global.compass_secret_shim.sh}}"
+    file: ".global.compass_secret_shim.sh"
+
 {{$network := concatne  "-" .stack_name "private" }}
 # --- DEFINES ---
 networks:
@@ -48,9 +64,18 @@ services:
     env_file:
       - ".global.common.env"
       - ".project.common.env"
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_PASS
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "license-private"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     healthcheck:
@@ -71,9 +96,18 @@ services:
       - ".global.common.env"
       - ".project.common.env"
       - ".project.license_manager.env"
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_PASS
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
+    configs:
+      - source: "secret-shim"
+        target: "/compass_secret_shim.sh"
     networks:
       - "license-private"
     <<:
+      - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
     healthcheck:

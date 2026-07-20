@@ -2,6 +2,12 @@ version: '3.8'
 
 # файл композиции для federation-части
 
+# пароли передаются через docker secrets, имена версионированы md5-ревизией
+secrets:
+  mysql-root-password:
+    name: "{{.stack_name}}_mysql_root_password-{{.secret_revisions.secret.project.mysql_root_password}}"
+    file: ".secret.project.mysql_root_password"
+
 # --- DEPLOY ---
 configs:
 
@@ -44,13 +50,16 @@ services:
     networks:
       - "federation-private"
     environment:
-      MYSQL_ROOT_PASSWORD: "{{.projects.federation.service.mysql.root_password}}"
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/MYSQL_ROOT_PASSWORD
+    secrets:
+      - source: mysql-root-password
+        target: MYSQL_ROOT_PASSWORD
     deploy:
       restart_policy:
         condition: "any"
         window: "10s"
     healthcheck:
-      test: "mysqladmin ping -h localhost -P 3306 -u root --password={{.projects.federation.service.mysql.root_password}}"
+      test: 'mysqladmin ping -h localhost -P 3306 -u root --password="$(cat /run/secrets/MYSQL_ROOT_PASSWORD)"'
       interval: "5s"
       timeout: "10s"
       retries: 6

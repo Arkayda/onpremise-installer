@@ -279,7 +279,7 @@ while n <= timeout:
 
 output = found_pivot_container.exec_run(
     user="www-data",
-    cmd=[
+    cmd=scriptutils.with_secret_env([
         "php",
         "src/Compass/Pivot/sh/php/domino/create_root_user.php",
         "--dry=0",
@@ -289,7 +289,7 @@ output = found_pivot_container.exec_run(
         "--mail=%s" % mail,
         "--password=%s" % password,
         "--sso_login=%s" % sso_login,
-    ],
+    ]),
 )
 
 if output.exit_code == 0:

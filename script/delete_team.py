@@ -12,7 +12,7 @@ sys.dont_write_bytecode = True
 import argparse, yaml, pwd, psutil
 import docker
 from pathlib import Path
-from utils import scriptutils
+from utils import scriptutils, team_mysql_settings
 from time import sleep
 import socket
 
@@ -39,6 +39,7 @@ stack_name = stack_name_prefix + "-monolith"
 
 script_dir = str(Path(__file__).parent.resolve())
 values_file_path = Path('%s/../src/values.%s.yaml' % (script_dir, args.values))
+team_config_path = Path('%s/../configs/team.yaml' % script_dir)
 
 if not values_file_path.exists():
     scriptutils.die(('Не найден файл со сгенерированными значениями. Вы развернули приложение?'))
@@ -100,6 +101,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
+        ". /tmp/compass_secret_env 2>/dev/null; " + 
         "php /app/src/Compass/Pivot/sh/php/service/delete_team.php --company_id=%s --confirm=0"
         % company_id,
     ],
@@ -131,9 +133,15 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
+        ". /tmp/compass_secret_env 2>/dev/null; " + 
         "php /app/src/Compass/Pivot/sh/php/service/delete_team.php --company_id=%s --confirm=1"
         % company_id,
     ],
 )
 
 print(output.output.decode())
+
+if output.exit_code == 0:
+    team_mysql_settings.delete_for_company(team_config_path, company_id)
+else:
+    sys.exit(output.exit_code)

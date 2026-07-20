@@ -11,13 +11,13 @@ ENABLE_GUESTS=0
 AUTH_TYPE=jwt
 ENABLE_P2P=false
 
+# секреты (JWT_APP_SECRET, JICOFO_AUTH_PASSWORD, JVB_AUTH_PASSWORD,
+# COMPASS_APP_SECRET, TURN_CREDENTIALS) передаются через docker secrets
+
 JWT_APP_ID={{.projects.jitsi.jwt.app_id}}
-JWT_APP_SECRET={{.projects.jitsi.jwt.app_secret}}
 JWT_ACCEPTED_ISSUERS={{.projects.jitsi.jwt.app_issuer}}
 JWT_ACCEPTED_AUDIENCES={{.projects.jitsi.jwt.app_audience}}
 
-JICOFO_AUTH_PASSWORD={{.projects.jitsi.secrets.jicofo_auth_password}}
-JVB_AUTH_PASSWORD={{.projects.jitsi.secrets.jvb_auth_password}}
 XMPP_INTERNAL_MUC_DOMAIN="internal-conference.meet.jitsi"
 XMPP_MUC_DOMAIN="conference.meet.jitsi"
 
