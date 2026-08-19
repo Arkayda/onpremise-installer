@@ -295,7 +295,7 @@ while n <= timeout:
                 volumes=["%s:/app/exported" % slack_export_workdir],
                 detach=True
             )
-            exporter_container.exec_run(user="root", cmd=["bash", "-c",". /tmp/compass_secret_env 2>/dev/null; " +  "mysql -h %s -P %i < /app/db_schema/schema.sql" % (manticore_host, manticore_port)])
+            exporter_container.exec_run(user="root", cmd=["bash", "-c","set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " +  "mysql -h %s -P %i < /app/db_schema/schema.sql" % (manticore_host, manticore_port)])
             print("\n Поднимаем контейнер экспортера для миграции")
         except Exception as e:
             loader.error()
@@ -313,7 +313,7 @@ output = exporter_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php -d display_errors=on /app/main.php --step=file --db='%s:%s' --workdir='/app/exported/' --dry=0"
         % (manticore_host, manticore_port),
     ],
@@ -329,7 +329,7 @@ output = found_php_file_node_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/FileNode/sh/php/migration/get_all_file_size.php --local_manticore_host='%s' --local_manticore_port=%s"
         % (manticore_host, manticore_port),
     ],
@@ -370,7 +370,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/Pivot/sh/php/migration/get_active_company_list.php",
     ],
 )
@@ -398,7 +398,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/Announcement/sh/php/migration/publish_technical_works_in_progress_company_announcement.php --company_id=%s"
         % selected_item["company_id"],
     ],
@@ -423,7 +423,7 @@ output = exporter_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php -d display_errors=on /app/main.php --step=file --db='%s:%s' --workdir='/app/exported/' --dry=0"
         % (manticore_host, manticore_port),
     ],
@@ -444,7 +444,7 @@ output = found_php_file_node_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/FileNode/sh/php/migration/just_download_files.php --local_manticore_host='%s' --local_manticore_port=%s --save_file_path='/files/migration_files_company_%s/'"
         % (manticore_host, manticore_port, selected_item["company_id"]),
     ],
@@ -469,7 +469,7 @@ output = found_php_file_node_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/FileNode/sh/php/migration/just_upload_files.php --local_manticore_host='%s' --local_manticore_port=%s --company_url='%s' --domino_url='%s' --space_id=%s --sender_user_id='%s' --need_work=%i --dry=0"
         % (manticore_host, manticore_port, selected_item["url"], domino_url, selected_item["company_id"], selected_item["created_by_user_id"], current_timestamp),
     ],
@@ -495,7 +495,7 @@ output = exporter_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php -d display_errors=on /app/main.php --step=user --db='%s:%s' --workdir='/app/exported/' --dry=0"
         % (manticore_host, manticore_port),
     ],
@@ -519,7 +519,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/Pivot/sh/php/migration/import_user.php --dry=0 --company-id=%s --local_manticore_host='%s' --local_manticore_port=%s --dry=0"
         % (selected_item["company_id"], manticore_host, manticore_port),
     ],
@@ -545,7 +545,7 @@ output = exporter_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php -d display_errors=on /app/main.php --step=channel --db='%s:%s' --workdir='/app/exported/' --dry=0"
         % (manticore_host, manticore_port),
     ],
@@ -568,7 +568,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/Conversation/sh/php/migration/import_conversations.php --local_manticore_host='%s' --local_manticore_port=%s --company_url='%s' --space_id=%s --dry=0"
         % (manticore_host, manticore_port, selected_item["url"], selected_item["company_id"]),
     ],
@@ -591,7 +591,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/Conversation/sh/php/migration/import_group_user.php --local_manticore_host='%s' --local_manticore_port=%s --dry=0 --company_id=%s --company_url='%s'"
         % (manticore_host, manticore_port, selected_item["company_id"], selected_item["url"]),
     ],
@@ -616,7 +616,7 @@ output = exporter_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php -d display_errors=on /app/main.php --step=message --db='%s:%s' --workdir='/app/exported/' --dry=0"
         % (manticore_host, manticore_port),
     ],
@@ -639,7 +639,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/Conversation/sh/php/migration/import_messages.php --local_manticore_host='%s' --local_manticore_port=%s --company_url='%s' --space_id=%s --dry=0"
         % (manticore_host, manticore_port, selected_item["url"], selected_item["company_id"]),
     ],
@@ -664,7 +664,7 @@ output = exporter_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php -d display_errors=on /app/main.php --step=thread --db='%s:%s' --workdir='/app/exported/' --dry=0"
         % (manticore_host, manticore_port),
     ],
@@ -687,7 +687,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/Thread/sh/php/migration/import_threads.php --local_manticore_host='%s' --local_manticore_port=%s --company_url='%s' --space_id=%s --dry=0"
         % (manticore_host, manticore_port, selected_item["url"], selected_item["company_id"]),
     ],
@@ -712,7 +712,7 @@ output = exporter_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php -d display_errors=on /app/main.php --step=comment --db='%s:%s' --workdir='/app/exported/' --dry=0"
         % (manticore_host, manticore_port),
     ],
@@ -735,7 +735,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/Thread/sh/php/migration/import_comments.php --local_manticore_host='%s' --local_manticore_port=%s --company_url='%s' --space_id=%s --dry=0"
         % (manticore_host, manticore_port, selected_item["url"], selected_item["company_id"]),
     ],
@@ -760,7 +760,7 @@ output = exporter_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php -d display_errors=on /app/main.php --step=reaction --db='%s:%s' --workdir='/app/exported/' --dry=0"
         % (manticore_host, manticore_port),
     ],
@@ -783,7 +783,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/Conversation/sh/php/migration/import_reactions.php --local_manticore_host='%s' --local_manticore_port=%s --company_url=%s --space_id=%s --dry=0"
         % (manticore_host, manticore_port, selected_item["url"], selected_item["company_id"]),
     ],
@@ -806,7 +806,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/Thread/sh/php/migration/import_reactions.php --local_manticore_host='%s' --local_manticore_port=%s --company_url=%s --space_id=%s --dry=0"
         % (manticore_host, manticore_port, selected_item["url"], selected_item["company_id"]),
     ],
@@ -829,7 +829,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/Conversation/sh/php/migration/start_full_reindex.php --company_url=%s --space_id=%s --dry=0"
         % (selected_item["url"], selected_item["company_id"]),
     ],
@@ -853,7 +853,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/Announcement/sh/php/migration/disable_announcement.php --announcement_id=%s"
         % (announcement_id),
     ],

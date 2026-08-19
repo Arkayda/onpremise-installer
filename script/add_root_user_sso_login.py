@@ -185,7 +185,7 @@ output = found_pivot_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php src/Compass/Pivot/sh/php/migration/add_root_user_sso_login.php --dry=0 --is-root --sso_login=%s" % sso_login,
     ],
 )

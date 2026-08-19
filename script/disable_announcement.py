@@ -94,7 +94,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/Announcement/sh/php/migration/disable_announcement.php --announcement_id=%i" % args.announcement_id,
     ],
 )

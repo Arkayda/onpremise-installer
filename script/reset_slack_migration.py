@@ -269,7 +269,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/Pivot/sh/php/migration/get_active_company_list.php",
     ],
 )
@@ -296,7 +296,7 @@ output = found_php_monolith_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php /app/src/Compass/Conversation/sh/php/migration/leave_from_conversations.php --local_manticore_host='%s' --local_manticore_port=%s --company_url='%s' --space_id=%s --dry=0"
         % (manticore_host, manticore_port, selected_item["url"], selected_item["company_id"]),
     ],
@@ -318,7 +318,7 @@ output = found_php_file_node_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         ">/app/src/Compass/FileNode/sh/php/migration/migration-file-download.log"
     ],
 )

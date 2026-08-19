@@ -122,7 +122,7 @@ def start():
         cmd=[
             "bash",
             "-c",
-            ". /tmp/compass_secret_env 2>/dev/null; " + 
+            "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
             cli.strip()
         ]
     )

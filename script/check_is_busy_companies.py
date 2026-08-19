@@ -84,7 +84,7 @@ if not found_monolith:
     )
 
 output = found_monolith.exec_run(user='www-data', cmd=['bash', '-c',
-                                                       ". /tmp/compass_secret_env 2>/dev/null; " + 'php /app/src/Compass/Pivot/sh/php/domino/check_is_busy_companies.php'])
+                                                       "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 'php /app/src/Compass/Pivot/sh/php/domino/check_is_busy_companies.php'])
 if output.exit_code != 0:
     print(output.output.decode("utf-8"))
     exit(1)

@@ -111,7 +111,7 @@ def start():
 
     for script in exec_script_list:
 
-        output = found_php_monolith_container.exec_run(user='www-data', cmd=['bash', '-c', ". /tmp/compass_secret_env 2>/dev/null; " + script])
+        output = found_php_monolith_container.exec_run(user='www-data', cmd=['bash', '-c', "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + script])
 
         if output.exit_code != 0:
             print(output.output.decode("utf-8"))

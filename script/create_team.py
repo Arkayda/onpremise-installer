@@ -171,7 +171,7 @@ def create_domino(
         cmd=[
             "bash",
             "-c",
-            ". /tmp/compass_secret_env 2>/dev/null; " + 
+            "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
             "php src/Compass/Pivot/sh/php/domino/create_domino.php --domino-id=%s --tier=1 --database-host=%s --code-host=%s --url=%s --is-company-creating-allowed=1 --go-database-controller-port=%i"
             % (
                 domino_id,
@@ -206,7 +206,7 @@ def create_domino(
             cmd=[
                 "bash",
                 "-c",
-                ". /tmp/compass_secret_env 2>/dev/null; " + 
+                "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
                 f"php src/Compass/Pivot/sh/php/domino/add_predefined_host_to_domino.php --domino-id={domino_id} --mysql-user=\"{database_user}\" --mysql-pass=\"{database_pass}\" --host-list=[{host_list_serialized}] --type=common"
             ],
         )
@@ -223,7 +223,7 @@ def create_domino(
             cmd=[
                 "bash",
                 "-c",
-                ". /tmp/compass_secret_env 2>/dev/null; " + 
+                "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
                 f"php src/Compass/Pivot/sh/php/domino/add_port_to_domino.php --domino-id={domino_id} --mysql-user=\"{database_user}\" --mysql-pass=\"{database_pass}\" --start-port={start_port} --end-port={end_port} --type=common"
             ],
         )
@@ -382,7 +382,7 @@ output = found_pivot_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         "php src/Compass/Pivot/sh/php/domino/check_domino_exists.php --domino-id=%s"
         % first_domino["label"],
     ],
@@ -408,7 +408,7 @@ if init:
         cmd=[
             "bash",
             "-c",
-            ". /tmp/compass_secret_env 2>/dev/null; " + 
+            "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
             "php src/Compass/Pivot/sh/php/domino/check_team_exists.php",
         ]
     )
@@ -446,7 +446,7 @@ if scriptutils.is_replication_master_server(current_values):
         cmd=[
             "bash",
             "-c",
-            ". /tmp/compass_secret_env 2>/dev/null; " + 
+            "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
             warm_up_command,
         ],
     )
@@ -496,7 +496,7 @@ if scriptutils.is_replication_master_server(current_values):
         cmd=[
             "bash",
             "-c",
-            ". /tmp/compass_secret_env 2>/dev/null; " + 
+            "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
             create_team_command
         ]
     )

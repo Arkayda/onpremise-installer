@@ -74,7 +74,7 @@ def update_space_configs(monolith_container: docker.models.containers.Container)
         cmd=[
             "bash",
             "-c",
-            ". /tmp/compass_secret_env 2>/dev/null; " + 
+            "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
             "php src/Compass/Pivot/sh/php/domino/force_update_company_db.php",
         ],
     )

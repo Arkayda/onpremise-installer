@@ -198,7 +198,8 @@ def with_secret_env(cmd):
 
     import shlex
 
-    source_line = ". /tmp/compass_secret_env 2>/dev/null; "
+    # set -a экспортирует все переменные из source-файла в окружение команды
+    source_line = "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; "
 
     # частый случай ["bash"|"sh", "-c", "<скрипт>"] — добавляем source в сам скрипт
     if (

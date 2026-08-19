@@ -140,7 +140,7 @@ output = found_pivot_container.exec_run(
     cmd=[
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         repair_command,
     ],
 )
@@ -150,7 +150,7 @@ if output.exit_code != 0:
         cmd=[
             "bash",
             "-c",
-            ". /tmp/compass_secret_env 2>/dev/null; " + 
+            "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
             repair_command,
         ],
     )

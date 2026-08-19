@@ -212,7 +212,7 @@ def update_host_ip(monolith_container: docker.models.containers.Container, host_
     result = monolith_container.exec_run([
         "bash",
         "-c",
-        ". /tmp/compass_secret_env 2>/dev/null; " + 
+        "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
         f"""mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" \\
         -p"$MYSQL_ROOT_PASS" \\
         -D pivot_company_service --skip-ssl \\
@@ -279,7 +279,7 @@ def update_space_configs(monolith_container: docker.models.containers.Container)
         cmd=[
             "bash",
             "-c",
-            ". /tmp/compass_secret_env 2>/dev/null; " + 
+            "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
             "php src/Compass/Pivot/sh/php/domino/force_update_company_db.php",
         ],
     )

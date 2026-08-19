@@ -155,7 +155,7 @@ for space_config in glob.glob("%s/*_company.json" % space_config_dir):
         cmd=[
             "bash",
             "-c",
-            ". /tmp/compass_secret_env 2>/dev/null; " + 
+            "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
             'php src/Compass/Pivot/sh/php/domino/repair_company.php --company-id="%s"' % space_id,
         ],
     )
@@ -165,7 +165,7 @@ for space_config in glob.glob("%s/*_company.json" % space_config_dir):
             cmd=[
                 "bash",
                 "-c",
-                ". /tmp/compass_secret_env 2>/dev/null; " + 
+                "set -a; . /tmp/compass_secret_env 2>/dev/null; set +a; " + 
                 'php src/Compass/Pivot/sh/php/domino/repair_company.php --company-id="%s"' % space_id,
             ],
         )
