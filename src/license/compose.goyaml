@@ -78,6 +78,7 @@ services:
       - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     healthcheck:
       test: "nc -z 127.0.0.1 80"
       interval: "5s"
@@ -110,6 +111,7 @@ services:
       - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     healthcheck:
       test: "nc -z 127.0.0.1 80"
       interval: "5s"

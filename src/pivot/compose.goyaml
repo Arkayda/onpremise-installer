@@ -435,6 +435,7 @@ services:
       - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     volumes:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
   # GO_ACTIVITY
@@ -467,6 +468,7 @@ services:
       - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     volumes:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
   # GO_PUSHER
@@ -508,6 +510,7 @@ services:
       - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     volumes:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
   # GO_SENDER_BALANCER
@@ -539,6 +542,7 @@ services:
       - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     volumes:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
 
@@ -576,6 +580,7 @@ services:
       - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     volumes:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
 
@@ -608,6 +613,7 @@ services:
       - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     volumes:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
 
@@ -641,6 +647,7 @@ services:
       - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     healthcheck:
       test: "nc -z 127.0.0.1 3000"
       interval: "5s"

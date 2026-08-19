@@ -194,6 +194,7 @@ services:
       - ".project.common.env"
       - ".project.php_file_node.env"
     <<: *secret-shim-entrypoint
+    command: ["sh", "/app/entrypoint.sh"]
     secrets:
       - source: mysql-root-password
         target: MYSQL_PASS
@@ -248,6 +249,7 @@ services:
       - ".project.common.env"
       - ".project.go_file_auth.env"
     <<: *secret-shim-entrypoint
+    command: ["sh", "/app/entrypoint.sh"]
     secrets:
       - source: mysql-root-password
         target: MYSQL_PASS

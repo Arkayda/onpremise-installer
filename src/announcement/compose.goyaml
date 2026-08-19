@@ -204,6 +204,7 @@ services:
       - ".global.common.env"
       - ".project.common.env"
     <<: *secret-shim-entrypoint
+    command: ["sh", "/app/entrypoint.sh"]
     secrets:
       - source: mysql-root-password
         target: MYSQL_PASS
@@ -267,6 +268,7 @@ services:
       - ".global.common.env"
       - ".project.common.env"
     <<: *secret-shim-entrypoint
+    command: ["sh", "/app/entrypoint.sh"]
     secrets:
       - source: mysql-root-password
         target: MYSQL_PASS

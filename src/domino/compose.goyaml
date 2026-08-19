@@ -486,6 +486,7 @@ services:
       - ".project.common.env"
       - ".project.go_company_cache.env"
     <<: *secret-shim-entrypoint
+    command: ["sh", "/app/entrypoint.sh"]
     secrets: *secrets-app
     configs:
       - source: "secret-shim"
@@ -532,6 +533,7 @@ services:
       - ".global.common.env"
       - ".project.common.env"
     <<: *secret-shim-entrypoint
+    command: ["sh", "/app/entrypoint.sh"]
     secrets: *secrets-app
     configs:
       - source: "secret-shim"
@@ -581,6 +583,7 @@ services:
       - ".global.common.env"
       - ".project.common.env"
     <<: *secret-shim-entrypoint
+    command: ["sh", "/app/entrypoint.sh"]
     secrets: *secrets-app
     configs:
       - source: "secret-shim"
@@ -626,6 +629,7 @@ services:
       - ".global.go_collector_request_balancing.env"
       - ".project.common.env"
     <<: *secret-shim-entrypoint
+    command: ["sh", "/app/entrypoint.sh"]
     secrets: *secrets-app
     configs:
       - source: "secret-shim"
@@ -676,6 +680,7 @@ services:
       - ".global.common.env"
       - ".project.common.env"
     <<: *secret-shim-entrypoint
+    command: ["sh", "/app/entrypoint.sh"]
     secrets: *secrets-app
     configs:
       - source: "secret-shim"
@@ -729,6 +734,7 @@ services:
       - ".project.common.env"
       - ".project.event.env"
     <<: *secret-shim-entrypoint
+    command: ["sh", "/app/entrypoint.sh"]
     secrets: *secrets-app
     configs:
       - source: "secret-shim"
@@ -785,6 +791,7 @@ services:
       - ".project.common.env"
       - ".project.php_pivot.env"
     <<: *secret-shim-entrypoint
+    command: ["sh", "/app/entrypoint.sh"]
     secrets:
       - source: mysql-root-password
         target: MYSQL_PASS

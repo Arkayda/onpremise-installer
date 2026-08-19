@@ -741,6 +741,7 @@ services:
       - *default-deploy
       - *log-rule-default
       - *healthcheck-go-2000
+    command: ["sh", "/app/entrypoint.sh"]
 
   # GO_SENDER_BALANCER
   go-sender-balancer-{{.projects.monolith.label}}:
@@ -771,6 +772,7 @@ services:
       - *default-deploy
       - *log-rule-default
       - *healthcheck-go-2000
+    command: ["sh", "/app/entrypoint.sh"]
     volumes:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
       - "{{.company_config_mount_path}}:/pivot_config"
@@ -811,6 +813,7 @@ services:
       - *default-deploy
       - *log-rule-default
       - *healthcheck-go-2000
+    command: ["sh", "/app/entrypoint.sh"]
     volumes:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
       - "{{$domino.company_config_dir}}/:/config"
@@ -886,6 +889,7 @@ services:
       - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     volumes:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
       - "{{.company_config_mount_path}}:/pivot_config"
@@ -924,6 +928,7 @@ services:
       - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     volumes:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
       - "{{.company_config_mount_path}}:/pivot_config"
@@ -970,6 +975,7 @@ services:
       - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     volumes:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
       - "{{.company_config_mount_path}}:/pivot_config"
@@ -1002,6 +1008,7 @@ services:
       - *default-deploy
       - *healthcheck-go-2000
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     volumes:
       - "{{get_trusted_cert_path_by_os}}:/etc/ssl/certs:ro"
       - "{{.company_config_mount_path}}:/pivot_config"
@@ -1361,6 +1368,7 @@ services:
       - *default-deploy
       - *log-rule-default
       - *healthcheck-go-2000
+    command: ["sh", "/app/entrypoint.sh"]
 
   # GO_RATING
   go-rating-{{$domino.label}}:
@@ -1392,6 +1400,7 @@ services:
       - *default-deploy
       - *log-rule-default
       - *healthcheck-go-2000
+    command: ["sh", "/app/entrypoint.sh"]
 
   # GO_COMPANY
   go-company-{{$domino.label}}:
@@ -1425,6 +1434,7 @@ services:
       - *default-deploy
       - *log-rule-default
       - *healthcheck-go-2000
+    command: ["sh", "/app/entrypoint.sh"]
 
   # GO_DATABASE_CONTROLLER
   go-database-controller-{{$domino.label}}:
@@ -1493,6 +1503,7 @@ services:
       - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     healthcheck:
       test: "nc -z 127.0.0.1 {{$domino.go_database_controller_port}}"
       interval: "5s"
@@ -1537,6 +1548,7 @@ services:
       TCP_PORT: 1000
       GRPC_PORT: 2000
     <<: *secret-shim-entrypoint
+    command: ["sh", "/app/entrypoint.sh"]
     deploy:
       replicas: 1
       restart_policy:
@@ -1594,6 +1606,7 @@ services:
       - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     healthcheck:
       test: "nc -z 127.0.0.1 80"
       interval: "5s"
@@ -1632,6 +1645,7 @@ services:
       - *secret-shim-entrypoint
       - *default-deploy
       - *log-rule-default
+    command: ["sh", "/app/entrypoint.sh"]
     healthcheck:
       test: "nc -z 127.0.0.1 80"
       interval: "5s"
@@ -1685,6 +1699,7 @@ services:
     networks:
       - "monolith-{{$service_label}}-private"
     <<: *secret-shim-entrypoint
+    command: ["sh", "/app/entrypoint.sh"]
     deploy:
       replicas: 1
       restart_policy:
