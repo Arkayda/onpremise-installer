@@ -13,17 +13,41 @@ secrets:
   mysql-root-password:
     name: "{{.stack_name}}_mysql_root_password-{{.secret_revisions.secret.project.mysql_root_password}}"
     file: ".secret.project.mysql_root_password"
+  mysql-pass:
+    name: "{{.stack_name}}_mysql_pass-{{.secret_revisions.secret.project.mysql_root_password}}"
+    file: ".secret.project.mysql_root_password"
+  mysql-system-pass:
+    name: "{{.stack_name}}_mysql_system_pass-{{.secret_revisions.secret.project.mysql_root_password}}"
+    file: ".secret.project.mysql_root_password"
+  mysql-root-pass:
+    name: "{{.stack_name}}_mysql_root_pass-{{.secret_revisions.secret.project.mysql_root_password}}"
+    file: ".secret.project.mysql_root_password"
   # пароль root для mysql домино-инстанса (php-migration работает с бд домино)
   domino-mysql-root-password:
     name: "{{.stack_name}}_domino_mysql_root_password-{{.secret_revisions.secret.project.domino.mysql_root_password}}"
+    file: ".secret.project.domino.mysql_root_password"
+  domino-mysql-system-pass:
+    name: "{{.stack_name}}_domino_mysql_system_pass-{{.secret_revisions.secret.project.domino.mysql_root_password}}"
+    file: ".secret.project.domino.mysql_root_password"
+  domino-mysql-root-pass:
+    name: "{{.stack_name}}_domino_mysql_root_pass-{{.secret_revisions.secret.project.domino.mysql_root_password}}"
+    file: ".secret.project.domino.mysql_root_password"
+  domino-mysql-pass:
+    name: "{{.stack_name}}_domino_mysql_pass-{{.secret_revisions.secret.project.domino.mysql_root_password}}"
     file: ".secret.project.domino.mysql_root_password"
   # пароль root для mysql сервиса auth
   auth-mysql-root-password:
     name: "{{.stack_name}}_auth_mysql_root_password-{{.secret_revisions.secret.project.auth.mysql_root_password}}"
     file: ".secret.project.auth.mysql_root_password"
+  auth-mysql-pass:
+    name: "{{.stack_name}}_auth_mysql_pass-{{.secret_revisions.secret.project.auth.mysql_root_password}}"
+    file: ".secret.project.auth.mysql_root_password"
   # пароль rabbitmq
   rabbit-password:
     name: "{{.stack_name}}_rabbit_password-{{.secret_revisions.secret.global.rabbit_password}}"
+    file: ".secret.global.rabbit_password"
+  rabbitmq-default-pass:
+    name: "{{.stack_name}}_rabbitmq_default_pass-{{.secret_revisions.secret.global.rabbit_password}}"
     file: ".secret.global.rabbit_password"
   # пароль kafka (подключение php/go сервисов)
   kafka-password:
@@ -108,32 +132,32 @@ x-secret-shim-entrypoint: &secret-shim-entrypoint
 
 # набор секретов: пароль mysql монолита (все алиасы) + пароль rabbitmq
 x-secrets-mysql-rabbit: &secrets-mysql-rabbit
-  - source: mysql-root-password
+  - source: mysql-pass
     target: MYSQL_PASS
   - source: mysql-root-password
     target: MYSQL_ROOT_PASSWORD
-  - source: mysql-root-password
+  - source: mysql-root-pass
     target: MYSQL_ROOT_PASS
-  - source: mysql-root-password
+  - source: mysql-system-pass
     target: MYSQL_SYSTEM_PASS
   - source: rabbit-password
     target: RABBIT_PASS
-  - source: rabbit-password
+  - source: rabbitmq-default-pass
     target: RABBITMQ_DEFAULT_PASS
 
 # то же + пароль kafka (для сервисов, подключающих .project.pivot.common.env)
 x-secrets-mysql-rabbit-kafka: &secrets-mysql-rabbit-kafka
-  - source: mysql-root-password
+  - source: mysql-pass
     target: MYSQL_PASS
   - source: mysql-root-password
     target: MYSQL_ROOT_PASSWORD
-  - source: mysql-root-password
+  - source: mysql-root-pass
     target: MYSQL_ROOT_PASS
-  - source: mysql-root-password
+  - source: mysql-system-pass
     target: MYSQL_SYSTEM_PASS
   - source: rabbit-password
     target: RABBIT_PASS
-  - source: rabbit-password
+  - source: rabbitmq-default-pass
     target: RABBITMQ_DEFAULT_PASS
   - source: kafka-password
     target: KAFKA_PASS
@@ -1248,17 +1272,17 @@ services:
       - source: "proxy-thread-conf"
         target: "/app/src/Compass/Thread/api/conf/proxy.php"
     secrets:
-      - source: mysql-root-password
+      - source: mysql-pass
         target: MYSQL_PASS
       - source: mysql-root-password
         target: MYSQL_ROOT_PASSWORD
-      - source: mysql-root-password
+      - source: mysql-root-pass
         target: MYSQL_ROOT_PASS
-      - source: mysql-root-password
+      - source: mysql-system-pass
         target: MYSQL_SYSTEM_PASS
       - source: rabbit-password
         target: RABBIT_PASS
-      - source: rabbit-password
+      - source: rabbitmq-default-pass
         target: RABBITMQ_DEFAULT_PASS
       - source: kafka-password
         target: KAFKA_PASS
@@ -1281,17 +1305,17 @@ services:
     # пароль берется от домино-инстанса (.project.domino.common.env подключается последним)
     command: ["bash", "/app/entrypoint.sh"]
     secrets:
-      - source: domino-mysql-root-password
+      - source: domino-mysql-pass
         target: MYSQL_PASS
       - source: domino-mysql-root-password
         target: MYSQL_ROOT_PASSWORD
-      - source: domino-mysql-root-password
+      - source: domino-mysql-root-pass
         target: MYSQL_ROOT_PASS
-      - source: domino-mysql-root-password
+      - source: domino-mysql-system-pass
         target: MYSQL_SYSTEM_PASS
       - source: rabbit-password
         target: RABBIT_PASS
-      - source: rabbit-password
+      - source: rabbitmq-default-pass
         target: RABBITMQ_DEFAULT_PASS
     environment:
       MYSQL_DOMINO_HOST: "{{$domino.mysql_host}}"
@@ -1473,17 +1497,17 @@ services:
       - ".project.override.env"
       - ".project.domino.go_database_controller.env"
     secrets:
-      - source: mysql-root-password
+      - source: mysql-pass
         target: MYSQL_PASS
       - source: mysql-root-password
         target: MYSQL_ROOT_PASSWORD
-      - source: mysql-root-password
+      - source: mysql-root-pass
         target: MYSQL_ROOT_PASS
-      - source: mysql-root-password
+      - source: mysql-system-pass
         target: MYSQL_SYSTEM_PASS
       - source: rabbit-password
         target: RABBIT_PASS
-      - source: rabbit-password
+      - source: rabbitmq-default-pass
         target: RABBITMQ_DEFAULT_PASS
       - source: backup-user-password
         target: BACKUP_USER_PASSWORD
@@ -1527,15 +1551,15 @@ services:
       - ".project.file.go_file_auth.env"
       - ".project.monolith.env"
     secrets:
-      - source: mysql-root-password
+      - source: mysql-pass
         target: MYSQL_PASS
       - source: mysql-root-password
         target: MYSQL_ROOT_PASSWORD
-      - source: mysql-root-password
+      - source: mysql-system-pass
         target: MYSQL_SYSTEM_PASS
       - source: rabbit-password
         target: RABBIT_PASS
-      - source: rabbit-password
+      - source: rabbitmq-default-pass
         target: RABBITMQ_DEFAULT_PASS
     configs:
       - source: "secret-shim"
@@ -1589,7 +1613,7 @@ services:
       - ".project.license.common.env"
       - ".project.monolith.env"
     secrets:
-      - source: mysql-root-password
+      - source: mysql-pass
         target: MYSQL_PASS
       - source: mysql-root-password
         target: MYSQL_ROOT_PASSWORD
@@ -1628,7 +1652,7 @@ services:
       - ".project.license.license_manager.env"
       - ".project.monolith.env"
     secrets:
-      - source: mysql-root-password
+      - source: mysql-pass
         target: MYSQL_PASS
       - source: mysql-root-password
         target: MYSQL_ROOT_PASSWORD
@@ -1692,7 +1716,7 @@ services:
       - ".project.auth.common.env"
     # пароль mysql сервиса auth (у go-auth свой инстанс базы)
     secrets:
-      - source: auth-mysql-root-password
+      - source: auth-mysql-pass
         target: MYSQL_PASS
       - source: auth-mysql-root-password
         target: MYSQL_ROOT_PASSWORD

@@ -35,6 +35,9 @@ secrets:
   mysql-root-password:
     name: "{{.stack_name}}_mysql_root_password-{{.secret_revisions.secret.project.mysql_root_password}}"
     file: ".secret.project.mysql_root_password"
+  mysql-pass:
+    name: "{{.stack_name}}_mysql_pass-{{.secret_revisions.secret.project.mysql_root_password}}"
+    file: ".secret.project.mysql_root_password"
 
 configs:
   # шим доставки docker secrets в окружение приложений
@@ -62,7 +65,7 @@ services:
     <<: *secret-shim-entrypoint
     command: ["sh", "/app/entrypoint.sh"]
     secrets:
-      - source: mysql-root-password
+      - source: mysql-pass
         target: MYSQL_PASS
       - source: mysql-root-password
         target: MYSQL_ROOT_PASSWORD

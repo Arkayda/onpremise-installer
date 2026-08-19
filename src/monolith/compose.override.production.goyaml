@@ -59,7 +59,7 @@ x-secrets-jitsi-visitors: &secrets-jitsi-visitors
     target: JICOFO_AUTH_PASSWORD
   - source: jitsi-jvb-auth-password
     target: JVB_AUTH_PASSWORD
-  - source: jitsi-jwt-app-secret
+  - source: compass-app-secret
     target: COMPASS_APP_SECRET
   - source: jitsi-turn-credentials
     target: TURN_CREDENTIALS
@@ -72,6 +72,9 @@ volumes:
 secrets:
   jitsi-jwt-app-secret:
     name: "{{.stack_name}}_jitsi_jwt_app_secret-{{.secret_revisions.secret.project.jitsi.jwt_app_secret}}"
+    file: ".secret.project.jitsi.jwt_app_secret"
+  compass-app-secret:
+    name: "{{.stack_name}}_compass_app_secret-{{.secret_revisions.secret.project.jitsi.jwt_app_secret}}"
     file: ".secret.project.jitsi.jwt_app_secret"
   jitsi-jicofo-auth-password:
     name: "{{.stack_name}}_jitsi_jicofo_auth_password-{{.secret_revisions.secret.project.jitsi.jicofo_auth_password}}"

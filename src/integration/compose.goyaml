@@ -53,11 +53,17 @@ secrets:
   mysql-root-password:
     name: "{{.stack_name}}_mysql_root_password-{{.secret_revisions.secret.project.mysql_root_password}}"
     file: ".secret.project.mysql_root_password"
+  mysql-pass:
+    name: "{{.stack_name}}_mysql_pass-{{.secret_revisions.secret.project.mysql_root_password}}"
+    file: ".secret.project.mysql_root_password"
   mysql-system-password:
     name: "{{.stack_name}}_mysql_system_password-{{.secret_revisions.secret.project.mysql_system_password}}"
     file: ".secret.project.mysql_system_password"
   rabbit-password:
     name: "{{.stack_name}}_rabbit_password-{{.secret_revisions.secret.global.rabbit_password}}"
+    file: ".secret.global.rabbit_password"
+  rabbitmq-default-pass:
+    name: "{{.stack_name}}_rabbitmq_default_pass-{{.secret_revisions.secret.global.rabbit_password}}"
     file: ".secret.global.rabbit_password"
 
 # --- DEFINES ---
@@ -150,7 +156,7 @@ services:
       - *healthcheck-php-9000
     # пароль своей бд + пароль системной бд монолита + rabbit
     secrets:
-      - source: mysql-root-password
+      - source: mysql-pass
         target: MYSQL_PASS
       - source: mysql-root-password
         target: MYSQL_ROOT_PASSWORD
@@ -158,7 +164,7 @@ services:
         target: MYSQL_SYSTEM_PASS
       - source: rabbit-password
         target: RABBIT_PASS
-      - source: rabbit-password
+      - source: rabbitmq-default-pass
         target: RABBITMQ_DEFAULT_PASS
     configs:
       - source: "secret-shim"

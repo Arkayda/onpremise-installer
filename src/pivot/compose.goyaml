@@ -33,15 +33,15 @@ x-secret-shim-entrypoint: &secret-shim-entrypoint
 
 # набор секретов приложений pivot: mysql + rabbit + kafka
 x-secrets-app: &secrets-app
-  - source: mysql-root-password
+  - source: mysql-pass
     target: MYSQL_PASS
   - source: mysql-root-password
     target: MYSQL_ROOT_PASSWORD
-  - source: mysql-root-password
+  - source: mysql-system-pass
     target: MYSQL_SYSTEM_PASS
   - source: rabbit-password
     target: RABBIT_PASS
-  - source: rabbit-password
+  - source: rabbitmq-default-pass
     target: RABBITMQ_DEFAULT_PASS
   - source: kafka-password
     target: KAFKA_PASS
@@ -51,8 +51,17 @@ secrets:
   mysql-root-password:
     name: "{{.stack_name}}_mysql_root_password-{{.secret_revisions.secret.project.mysql_root_password}}"
     file: ".secret.project.mysql_root_password"
+  mysql-pass:
+    name: "{{.stack_name}}_mysql_pass-{{.secret_revisions.secret.project.mysql_root_password}}"
+    file: ".secret.project.mysql_root_password"
+  mysql-system-pass:
+    name: "{{.stack_name}}_mysql_system_pass-{{.secret_revisions.secret.project.mysql_root_password}}"
+    file: ".secret.project.mysql_root_password"
   rabbit-password:
     name: "{{.stack_name}}_rabbit_password-{{.secret_revisions.secret.global.rabbit_password}}"
+    file: ".secret.global.rabbit_password"
+  rabbitmq-default-pass:
+    name: "{{.stack_name}}_rabbitmq_default_pass-{{.secret_revisions.secret.global.rabbit_password}}"
     file: ".secret.global.rabbit_password"
   kafka-password:
     name: "{{.stack_name}}_kafka_password-{{.secret_revisions.secret.project.kafka_password}}"
