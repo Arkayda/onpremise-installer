@@ -691,7 +691,7 @@ services:
           - node.labels.role == {{$node_label_role}}
       {{- end}}
     healthcheck:
-      test: 'mysqladmin ping -h localhost -P 3306 -u root --password="$(cat /run/secrets/MYSQL_ROOT_PASSWORD)"'
+      test: 'mysqladmin ping -h localhost -P 3306 -u root --password="$$(cat /run/secrets/MYSQL_ROOT_PASSWORD)"'
       interval: "5s"
       timeout: "10s"
       retries: 30
